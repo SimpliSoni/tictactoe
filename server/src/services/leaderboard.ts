@@ -1,4 +1,4 @@
-import { User, IUser } from '../models/User';
+import { User } from '../models/User';
 import { Leaderboard } from '../models/Leaderboard';
 import { config } from '../config/env';
 import { UserStats, LeaderboardEntry } from '../types/game';

@@ -82,13 +82,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       setIsAuthenticated(false);
     });
 
-    socketInstance.on('connect_error', (err) => {
+    socketInstance.on('connect_error', (err: Error) => {
       console.error('Connection error:', err.message);
       setError(`Connection error: ${err.message}`);
     });
 
     // Auth events
-    socketInstance.on('authenticated', (data) => {
+    socketInstance.on('authenticated', (data: { userId: string; username: string; stats: UserStats; elo: number }) => {
       console.log('Authenticated:', data.username);
       setIsAuthenticated(true);
       setUser({
@@ -100,12 +100,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     });
 
     // Matchmaking events
-    socketInstance.on('queueStatus', (data) => {
+    socketInstance.on('queueStatus', (data: { position: number }) => {
       console.log('Queue position:', data.position);
       setQueuePosition(data.position);
     });
 
-    socketInstance.on('matchFound', (game) => {
+    socketInstance.on('matchFound', (game: GameState) => {
       console.log('Match found!', game.gameId);
       setIsInQueue(false);
       setQueuePosition(null);
@@ -122,12 +122,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     });
 
     // Game events
-    socketInstance.on('gameUpdate', (state) => {
+    socketInstance.on('gameUpdate', (state: GameState) => {
       console.log('Game updated');
       setCurrentGame(state);
     });
 
-    socketInstance.on('opponentMove', (data) => {
+    socketInstance.on('opponentMove', (data: { position: number; board: Board; nextTurn: PlayerSymbol }) => {
       console.log('Opponent moved:', data.position);
       if (currentGame) {
         setCurrentGame({
@@ -138,7 +138,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       }
     });
 
-    socketInstance.on('gameOver', (result) => {
+    socketInstance.on('gameOver', (result: { winner: PlayerSymbol | 'draw'; stats: UserStats; eloChange: number }) => {
       console.log('Game over:', result.winner);
       
       // Update user stats
@@ -157,7 +157,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       }, 3000); // Show result for 3 seconds
     });
 
-    socketInstance.on('opponentDisconnected', (data) => {
+    socketInstance.on('opponentDisconnected', (data: { timeoutSeconds: number }) => {
       console.log('Opponent disconnected');
       setIsOpponentDisconnected(true);
       setError(`Opponent disconnected. Waiting ${data.timeoutSeconds}s...`);
@@ -170,7 +170,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     });
 
     // Error events
-    socketInstance.on('error', (data) => {
+    socketInstance.on('error', (data: { message: string }) => {
       console.error('Server error:', data.message);
       setError(data.message);
     });

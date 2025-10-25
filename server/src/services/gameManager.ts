@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { GameLogic } from './gameLogic';
 import { Game } from '../models/Game';
-import { GameState, Player, PlayerSymbol, MoveResult, CellValue } from '../types/game';
+import { GameState, Player, PlayerSymbol, MoveResult } from '../types/game';
 
 /**
  * Manages all active and completed games
@@ -180,7 +180,7 @@ export class GameManager {
         success: true,
         gameState: game,
         gameOver: true,
-        winner,
+        winner: winner || undefined,
       };
     }
 

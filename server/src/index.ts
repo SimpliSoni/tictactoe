@@ -58,7 +58,7 @@ class TicTacToeServer {
     this.app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
     // Request logging
-    this.app.use((req, res, next) => {
+    this.app.use((req, _res, next) => {
       console.log(`📨 ${req.method} ${req.path}`);
       next();
     });

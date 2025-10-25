@@ -1,4 +1,5 @@
 import { Socket, Server } from 'socket.io';
+import { Types } from 'mongoose';
 import { User } from '../models/User';
 import { GameState, ClientToServerEvents, ServerToClientEvents } from '../types/game';
 import { gameManager } from '../services/gameManager';
@@ -36,7 +37,7 @@ export class SocketHandlers {
    */
   private static async handleAuth(
     socket: Socket<ClientToServerEvents, ServerToClientEvents>,
-    io: Server,
+    _io: Server,
     data: { deviceId: string; username?: string }
   ): Promise<void> {
     try {
@@ -79,12 +80,12 @@ export class SocketHandlers {
       }
 
       // Store user ID in socket data
-      socket.data.userId = user._id.toString();
+      socket.data.userId = (user._id as Types.ObjectId).toString();
       socket.data.username = user.username;
 
       // Emit authenticated event
       socket.emit('authenticated', {
-        userId: user._id.toString(),
+        userId: (user._id as Types.ObjectId).toString(),
         username: user.username,
         stats: user.stats,
         elo: user.elo,
@@ -168,7 +169,7 @@ export class SocketHandlers {
    */
   private static handleLeaveQueue(
     socket: Socket<ClientToServerEvents, ServerToClientEvents>,
-    io: Server
+    _io: Server
   ): void {
     try {
       matchmakingService.removePlayerFromQueue(socket.id);
@@ -255,7 +256,7 @@ export class SocketHandlers {
    * Update stats, ELO, and persist game
    */
   private static async handleGameOver(
-    socket: Socket,
+    _socket: Socket,
     io: Server,
     game: GameState,
     winner: string

@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+// Types are defined below
 
 // Player symbol types
 export type PlayerSymbol = 'X' | 'O';

@@ -1,4 +1,4 @@
-import { Board, PlayerSymbol, WIN_PATTERNS, CellValue } from '../types/game';
+import { Board, PlayerSymbol, WIN_PATTERNS } from '../types/game';
 
 /**
  * Pure game logic functions (no side effects)
