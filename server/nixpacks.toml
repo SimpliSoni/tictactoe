@@ -4,10 +4,14 @@ providers = ["node"]
 nixPkgs = ["nodejs_20"]
 
 [phases.build]
-cmds = ["npm ci --cache /tmp/.npm", "npm run build"]
+cmds = ["npm ci --cache /tmp/.npm --prefer-offline=false", "npm run build"]
 
 [phases.start]
 cmd = "npm start"
 
 [variables]
 NODE_ENV = "production"
+
+# Disable Nixpacks cache to avoid conflicts
+[cache]
+enabled = false
