@@ -17,8 +17,8 @@
 const Config = {
   // Server URL - CHANGE THIS FOR TESTING ON REAL DEVICE
   SERVER_URL: __DEV__ 
-    ? 'http://localhost:3000'  // ⚠️ Change to your computer's IP address for testing on device
-    : 'https://your-production-server.com', // Production URL
+    ? 'http://192.168.56.1:3000'  // ⚠️ Change to your computer's IP address for testing on device
+    : 'https://tictactoe-production-768b.up.railway.app', // Production URL
   
   // API endpoints
   API: {
