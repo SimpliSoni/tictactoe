@@ -111,13 +111,19 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       setQueuePosition(null);
       setCurrentGame(game);
       
-      // Determine my symbol
+      // Determine my symbol - ADD LOGGING HERE
       if (user) {
+        let symbol: PlayerSymbol | null = null; // Variable to hold the symbol
         if (game.players.X.userId === user.userId) {
-          setMySymbol('X');
-        } else {
-          setMySymbol('O');
+          symbol = 'X';
+        } else if (game.players.O.userId === user.userId) { // Added explicit check
+          symbol = 'O';
         }
+        console.log(`Determined mySymbol: ${symbol} (User ID: ${user.userId}, X ID: ${game.players.X.userId}, O ID: ${game.players.O.userId})`); // Log determination
+        setMySymbol(symbol); // Set the symbol
+      } else {
+        console.error('Match found but user data is missing!'); // Log if user is missing
+        setError('User data missing when match found.');
       }
     });
 

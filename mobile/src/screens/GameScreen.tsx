@@ -25,6 +25,9 @@ export const GameScreen = ({ navigation }: any) => {
 
   const [winner, setWinner] = useState<PlayerSymbol | 'draw' | null>(null);
 
+  // ADD LOGGING HERE, before the conditional return
+  console.log(`Rendering GameScreen - currentGame: ${!!currentGame}, mySymbol: ${mySymbol}, user: ${!!user}`);
+
   useEffect(() => {
     // Navigate back if no game
     if (!currentGame) {
@@ -74,6 +77,7 @@ export const GameScreen = ({ navigation }: any) => {
   };
 
   if (!currentGame || !mySymbol || !user) {
+    console.log('GameScreen rendering null because data is missing.'); // Log why it's blank
     return null;
   }
 
