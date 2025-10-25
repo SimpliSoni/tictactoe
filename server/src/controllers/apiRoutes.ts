@@ -4,17 +4,37 @@ import { Game } from '../models/Game';
 import { gameManager } from '../services/gameManager';
 import { matchmakingService } from '../services/matchmaking';
 import { leaderboardService } from '../services/leaderboard';
+import { database } from '../config/database'; // Import database instance
 
 const router = Router();
 
 /**
- * Health check endpoint
+ * Health check endpoint with dependency status
  */
-router.get('/health', (_req: Request, res: Response): void => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-  });
+router.get('/health', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    // Check MongoDB connection status
+    const dbHealthy = database.isHealthy(); 
+
+    const healthStatus = {
+      status: dbHealthy ? 'ok' : 'degraded',
+      timestamp: new Date().toISOString(),
+      dependencies: {
+        database: dbHealthy ? 'connected' : 'disconnected',
+      },
+    };
+
+    // Return 503 if database is not healthy, otherwise 200
+    res.status(dbHealthy ? 200 : 503).json(healthStatus);
+
+  } catch (error) {
+    console.error('❌ Health check error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Health check failed',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 });
 
 /**
