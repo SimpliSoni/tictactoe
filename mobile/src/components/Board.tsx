@@ -24,18 +24,14 @@ export const Board: React.FC<BoardProps> = ({
   winningPattern 
 }) => {
   const renderCell = (value: CellValue, index: number) => {
-    const isWinningCell = winningPattern?.includes(index);
-    const isDisabled = disabled || value !== null;
-    const isRightColumn = (index + 1) % 3 === 0;
-    const isBottomRow = index >= 6;
+  const isWinningCell = winningPattern?.includes(index);
+  const isDisabled = disabled || value !== null;
 
     return (
       <TouchableOpacity
         key={index}
         style={[
           styles.cell,
-          !isRightColumn && styles.cellBorderRight,
-          !isBottomRow && styles.cellBorderBottom,
           isWinningCell && styles.winningCell,
         ]}
         onPress={() => !isDisabled && onCellPress(index)}
@@ -77,26 +73,18 @@ const styles = StyleSheet.create({
     height: BOARD_SIZE,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    backgroundColor: Config.COLORS.background,
-    borderWidth: 1,
+    backgroundColor: Config.COLORS.border,
+    borderWidth: 2,
     borderColor: Config.COLORS.border,
     borderRadius: 8,
-    overflow: 'hidden',
+    gap: 2, // Spacing between cells to show grid lines
   },
   cell: {
-    width: '33.3333%', // Flexbox percentage-based width
-    aspectRatio: 1, // Maintain square aspect ratio
+    width: `${(100 / 3) - 0.5}%`, // Account for gap spacing
+    aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Config.COLORS.emptyCell,
-  },
-  cellBorderRight: {
-    borderRightWidth: 1,
-    borderRightColor: Config.COLORS.border,
-  },
-  cellBorderBottom: {
-    borderBottomWidth: 1,
-    borderBottomColor: Config.COLORS.border,
   },
   winningCell: {
     backgroundColor: Config.COLORS.winningCell,
