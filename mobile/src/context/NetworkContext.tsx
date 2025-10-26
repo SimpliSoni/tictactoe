@@ -1,6 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 
+/**
+ * NetworkContext - Monitors network connectivity status
+ * 
+ * Currently unused but available for future integration to:
+ * - Show offline indicators when no internet
+ * - Prevent matchmaking during disconnection
+ * - Queue moves and sync when connection is restored
+ * - Display specific error messages for network issues
+ * 
+ * To integrate: Wrap App with <NetworkProvider> and use useNetwork() hook in components
+ */
+
 interface NetworkContextType {
   isConnected: boolean;
   isInternetReachable: boolean | null;

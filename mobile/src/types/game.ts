@@ -38,6 +38,7 @@ export interface GameState {
   moves: GameMove[];
   createdAt: Date;
   lastMoveAt: Date;
+  winningPattern?: number[] | null;  // ✅ Added for highlighting winning cells
 }
 
 export interface UserStats {
@@ -77,6 +78,7 @@ export interface ServerToClientEvents {
     finalBoard: Board; 
     stats: UserStats | null;  // ✅ Made optional to match server
     eloChange: number;
+    winningPattern: number[] | null;  // ✅ Added for highlighting winning cells
   }) => void;
   opponentDisconnected: (data: { timeoutSeconds: number }) => void;
   opponentReconnected: () => void;

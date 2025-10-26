@@ -4,9 +4,9 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet, 
-  ActivityIndicator,
-  SafeAreaView
+  ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGame } from '../context/GameContext';
 import Config from '../config/config';
 
@@ -27,11 +27,11 @@ export const MatchmakingScreen = ({ navigation }: any) => {
   }, [isInQueue, currentGame, joinQueue]);
 
   useEffect(() => {
-    // Cleanup: leave queue when navigating away
+    // Cleanup: leave queue when component unmounts (navigating away)
     return () => {
       leaveQueue();
     };
-  }, [leaveQueue]);
+  }, []); // Empty dependency array - cleanup only runs on unmount
 
   useEffect(() => {
     // Navigate to game when match is found

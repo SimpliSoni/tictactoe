@@ -5,9 +5,9 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   ActivityIndicator,
-  SafeAreaView,
   Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGame } from '../context/GameContext';
 import Config from '../config/config';
 

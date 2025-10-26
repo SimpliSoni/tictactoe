@@ -9,6 +9,29 @@ import { database } from '../config/database'; // Import database instance
 const router = Router();
 
 /**
+ * Validation helper: Check if a string is a valid MongoDB ObjectId
+ */
+const isValidObjectId = (id: string): boolean => {
+  return /^[0-9a-fA-F]{24}$/.test(id);
+};
+
+/**
+ * Validation helper: Parse and validate limit parameter
+ */
+const parseLimit = (limitStr: string | undefined, defaultLimit: number = 50, maxLimit: number = 100): { valid: boolean; value: number } => {
+  if (!limitStr) {
+    return { valid: true, value: defaultLimit };
+  }
+
+  const parsed = parseInt(limitStr, 10);
+  if (isNaN(parsed) || parsed < 1 || parsed > maxLimit) {
+    return { valid: false, value: defaultLimit };
+  }
+
+  return { valid: true, value: parsed };
+};
+
+/**
  * Health check endpoint with dependency status
  */
 router.get('/health', async (_req: Request, res: Response): Promise<void> => {
@@ -42,8 +65,16 @@ router.get('/health', async (_req: Request, res: Response): Promise<void> => {
  */
 router.get('/leaderboard', async (_req: Request, res: Response): Promise<void> => {
   try {
-    const limit = Math.min(parseInt(_req.query.limit as string) || 50, 100);
-    const topPlayers = await leaderboardService.getTopPlayers(limit);
+    const limitResult = parseLimit(_req.query.limit as string, 50, 100);
+    if (!limitResult.valid) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid limit parameter. Must be a number between 1 and 100',
+      });
+      return;
+    }
+
+    const topPlayers = await leaderboardService.getTopPlayers(limitResult.value);
 
     res.json({
       success: true,
@@ -66,9 +97,21 @@ router.get('/stats/:userId', async (req: Request, res: Response): Promise<void> 
   try {
     const { userId } = req.params;
 
+    // Validate userId format
+    if (!isValidObjectId(userId)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid user ID format',
+      });
+      return;
+    }
+
     const user = await User.findById(userId);
     if (!user) {
-      res.status(404).json({ error: 'User not found' });
+      res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
       return;
     }
 
@@ -87,7 +130,10 @@ router.get('/stats/:userId', async (req: Request, res: Response): Promise<void> 
     });
   } catch (error) {
     console.error('❌ Stats error:', error);
-    res.status(500).json({ error: 'Failed to fetch stats' });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch stats',
+    });
   }
 });
 
@@ -119,7 +165,34 @@ router.get('/status', async (_req: Request, res: Response): Promise<void> => {
 router.get('/games/:userId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { userId } = req.params;
-    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+
+    // Validate userId format
+    if (!isValidObjectId(userId)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid user ID format',
+      });
+      return;
+    }
+
+    const limitResult = parseLimit(req.query.limit as string, 20, 100);
+    if (!limitResult.valid) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid limit parameter. Must be a number between 1 and 100',
+      });
+      return;
+    }
+
+    // Verify user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+      return;
+    }
 
     const games = await Game.find({
       $or: [
@@ -129,7 +202,7 @@ router.get('/games/:userId', async (req: Request, res: Response): Promise<void> 
       status: 'completed',
     })
       .sort({ completedAt: -1 })
-      .limit(limit)
+      .limit(limitResult.value)
       .lean()
       .exec();
 
@@ -140,7 +213,10 @@ router.get('/games/:userId', async (req: Request, res: Response): Promise<void> 
     });
   } catch (error) {
     console.error('❌ Game history error:', error);
-    res.status(500).json({ error: 'Failed to fetch game history' });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch game history',
+    });
   }
 });
 

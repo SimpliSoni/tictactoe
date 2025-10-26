@@ -87,6 +87,7 @@ export interface ServerToClientEvents {
     finalBoard: Board; 
     stats: UserStats | null;  // ✅ Made optional for leave/forfeit scenarios
     eloChange: number;
+    winningPattern: number[] | null;  // ✅ Added for highlighting winning cells
   }) => void;
   opponentDisconnected: (data: { timeoutSeconds: number }) => void;
   opponentReconnected: () => void;

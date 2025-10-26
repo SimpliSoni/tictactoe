@@ -169,7 +169,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       });
     });
 
-    socketInstance.on('gameOver', (result: { winner: PlayerSymbol | 'draw'; stats: UserStats | null; eloChange: number }) => {
+    socketInstance.on('gameOver', (result: { winner: PlayerSymbol | 'draw'; stats: UserStats | null; eloChange: number; winningPattern: number[] | null }) => {
       console.log('Game over:', result.winner);
       setIsOpponentDisconnected(false);
       
@@ -189,19 +189,19 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         });
       }
       
-      // Show game result with cleanup
-      // Clear any existing timeout first
-      if (gameOverTimeoutRef.current) {
-        clearTimeout(gameOverTimeoutRef.current);
-      }
-
-      const timeout = setTimeout(() => {
-        setCurrentGame(null);
-        setMySymbol(null);
-        gameOverTimeoutRef.current = null;
-      }, 3000); // Show result for 3 seconds
-      
-      gameOverTimeoutRef.current = timeout;
+      // Update current game with winner status and winning pattern to trigger GameScreen's game-over logic
+      // GameScreen will handle cleanup and navigation after the alert is dismissed
+      setCurrentGame((prevGame) => {
+        if (!prevGame) {
+          console.warn('Received gameOver but currentGame is null');
+          return prevGame;
+        }
+        return {
+          ...prevGame,
+          winner: result.winner,
+          winningPattern: result.winningPattern,
+        };
+      });
     });
 
     socketInstance.on('opponentDisconnected', (data: { timeoutSeconds: number }) => {

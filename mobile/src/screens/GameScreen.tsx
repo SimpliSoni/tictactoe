@@ -4,9 +4,9 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet,
-  SafeAreaView,
   Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGame } from '../context/GameContext';
 import { Board } from '../components/Board';
 import Config from '../config/config';
@@ -20,6 +20,7 @@ export const GameScreen = ({ navigation }: any) => {
     user,
     makeMove, 
     forfeit,
+    leaveGame,
     isOpponentDisconnected
   } = useGame();
 
@@ -47,14 +48,20 @@ export const GameScreen = ({ navigation }: any) => {
         Alert.alert(
           isDraw ? 'Draw!' : isWin ? 'You Win! 🎉' : 'You Lose 😢',
           isDraw ? 'The game ended in a draw' : isWin ? 'Congratulations!' : 'Better luck next time!',
-          [{ text: 'OK', onPress: () => navigation.replace('Home') }]
+          [{ 
+            text: 'OK', 
+            onPress: () => {
+              leaveGame(); // Clean up game context state
+              navigation.replace('Home');
+            }
+          }]
         );
       }, 1000);
       
       // Cleanup timeout on unmount
       return () => clearTimeout(timeout);
     }
-  }, [currentGame, mySymbol, navigation]); // ✅ Added all dependencies
+  }, [currentGame, mySymbol, navigation, leaveGame]); // ✅ Added all dependencies
 
   const handleCellPress = (position: number) => {
     if (!isMyTurn || winner) return;
@@ -120,7 +127,7 @@ export const GameScreen = ({ navigation }: any) => {
             onCellPress={handleCellPress}
             disabled={!isMyTurn || !!winner}
             mySymbol={mySymbol}
-            winningPattern={null}
+            winningPattern={currentGame.winningPattern || null}
           />
         </View>
 

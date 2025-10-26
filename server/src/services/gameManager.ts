@@ -111,7 +111,6 @@ export class GameManager {
 
       // Validate game exists
       if (!game) {
-        this.moveLocks.delete(gameId);
         return {
           success: false,
           error: 'Game not found',
@@ -120,7 +119,6 @@ export class GameManager {
 
       // Validate game is active
       if (game.status !== 'active') {
-        this.moveLocks.delete(gameId);
         return {
           success: false,
           error: 'Game is not active',
@@ -130,7 +128,6 @@ export class GameManager {
       // Determine player symbol
       const playerSymbol = this.getPlayerSymbol(game, socketId);
       if (!playerSymbol) {
-        this.moveLocks.delete(gameId);
         return {
           success: false,
           error: 'You are not a player in this game',
@@ -139,7 +136,6 @@ export class GameManager {
 
       // Validate it's player's turn
       if (game.currentTurn !== playerSymbol) {
-        this.moveLocks.delete(gameId);
         return {
           success: false,
           error: `It's not your turn. Current turn: ${game.currentTurn}`,
@@ -148,7 +144,6 @@ export class GameManager {
 
       // Validate position
       if (!Number.isInteger(position) || position < 0 || position > 8) {
-        this.moveLocks.delete(gameId);
         return {
           success: false,
           error: 'Invalid position: must be 0-8',
@@ -157,7 +152,6 @@ export class GameManager {
 
       // Validate board state is not corrupted
       if (!GameLogic.isValidBoardState(game.board)) {
-        this.moveLocks.delete(gameId);
         console.error(`❌ Corrupted board state detected in game ${gameId}`);
         return {
           success: false,
@@ -167,7 +161,6 @@ export class GameManager {
 
       // Validate move is legal
       if (!GameLogic.isValidMove(position, game.board)) {
-        this.moveLocks.delete(gameId);
         return {
           success: false,
           error: 'That cell is already occupied',
@@ -196,9 +189,6 @@ export class GameManager {
         game.status = 'completed';
         game.winner = winner;
         console.log(`🏁 Game ${gameId} completed. Winner: ${winner}`);
-        
-        // Release lock before returning
-        this.moveLocks.delete(gameId);
 
         return {
           success: true,
@@ -211,22 +201,20 @@ export class GameManager {
       // ↪️ SWITCH TURN
       game.currentTurn = GameLogic.getOpponentSymbol(playerSymbol);
 
-      // Release lock before returning
-      this.moveLocks.delete(gameId);
-
       return {
         success: true,
         gameState: game,
         gameOver: false,
       };
     } catch (error) {
-      // 🔓 ALWAYS release lock on error
-      this.moveLocks.delete(gameId);
       console.error(`❌ Move processing error in game ${gameId}:`, error);
       return {
         success: false,
         error: 'Failed to process move',
       };
+    } finally {
+      // 🔓 ALWAYS release lock, even if unexpected error occurs
+      this.moveLocks.delete(gameId);
     }
   }
 

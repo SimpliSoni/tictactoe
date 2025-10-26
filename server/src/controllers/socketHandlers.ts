@@ -5,6 +5,7 @@ import { GameState, ClientToServerEvents, ServerToClientEvents } from '../types/
 import { gameManager } from '../services/gameManager';
 import { matchmakingService } from '../services/matchmaking';
 import { leaderboardService } from '../services/leaderboard';
+import { GameLogic } from '../services/gameLogic';
 import { config } from '../config/env';
 
 /**
@@ -63,6 +64,12 @@ export class SocketHandlers {
         // Check for valid characters (alphanumeric, spaces, underscores, hyphens)
         if (!/^[a-zA-Z0-9_ -]+$/.test(trimmedUsername)) {
           socket.emit('error', { message: 'Username can only contain letters, numbers, spaces, underscores, and hyphens' });
+          return;
+        }
+
+        // Ensure at least one alphanumeric character (not just spaces, underscores, or hyphens)
+        if (!/[a-zA-Z0-9]/.test(trimmedUsername)) {
+          socket.emit('error', { message: 'Username must contain at least one letter or number' });
           return;
         }
       }
@@ -291,6 +298,9 @@ export class SocketHandlers {
       const playerOId = game.players.O.userId;
       const isForfeit = options?.isForfeit ?? false;
 
+      // Get winning pattern for highlighting
+      const winningPattern = GameLogic.getWinningPattern(game.board);
+
       // Update stats
       if (winner === 'X') {
         await leaderboardService.updateStats(playerXId, 'win');
@@ -340,6 +350,7 @@ export class SocketHandlers {
           finalBoard: game.board,
           stats: updatedXUser?.stats ?? null,
           eloChange: eloChanges.X,
+          winningPattern,
         });
       }
 
@@ -349,6 +360,7 @@ export class SocketHandlers {
           finalBoard: game.board,
           stats: updatedOUser?.stats ?? null,
           eloChange: eloChanges.O,
+          winningPattern,
         });
       }
 
