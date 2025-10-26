@@ -12,9 +12,9 @@ interface BoardProps {
 }
 
 const { width } = Dimensions.get('window');
-const BOARD_SIZE = Math.min(width - 40, 400);
-// Calculate CELL_SIZE for text sizing only (not for cell dimensions)
-const CELL_SIZE = BOARD_SIZE / 3;
+const BOARD_SIZE = Math.min(width - 60, 360);
+const GAP_SIZE = 10;
+const CELL_SIZE = (BOARD_SIZE - GAP_SIZE * 4) / 3; // 4 gaps total (outer + inner)
 
 export const Board: React.FC<BoardProps> = ({ 
   board, 
@@ -23,41 +23,60 @@ export const Board: React.FC<BoardProps> = ({
   mySymbol,
   winningPattern 
 }) => {
-  const renderCell = (value: CellValue, index: number) => {
-  const isWinningCell = winningPattern?.includes(index);
-  const isDisabled = disabled || value !== null;
+  const renderRow = (rowIndex: number) => {
+    const cells = [];
+    for (let col = 0; col < 3; col++) {
+      const index = rowIndex * 3 + col;
+      const value = board[index];
+      const isWinningCell = winningPattern?.includes(index);
+      const isDisabled = disabled || value !== null;
 
-    return (
-      <TouchableOpacity
-        key={index}
-        style={[
-          styles.cell,
-          isWinningCell && styles.winningCell,
-        ]}
-        onPress={() => !isDisabled && onCellPress(index)}
-        disabled={isDisabled}
-        activeOpacity={0.7}
-      >
-        {value && (
-          <Text
-            style={[
-              styles.cellText,
-              value === 'X' && styles.xText,
-              value === 'O' && styles.oText,
-              isWinningCell && styles.winningText,
-            ]}
-          >
-            {value}
-          </Text>
-        )}
-      </TouchableOpacity>
-    );
+      cells.push(
+        <TouchableOpacity
+          key={index}
+          style={[
+            styles.cell,
+            isWinningCell && styles.winningCell,
+          ]}
+          onPress={() => {
+            console.log(`Cell ${index} pressed, value: ${value}, disabled: ${isDisabled}`);
+            if (!isDisabled) {
+              onCellPress(index);
+            }
+          }}
+          disabled={isDisabled}
+          activeOpacity={0.6}
+        >
+          {value && (
+            <Text
+              style={[
+                styles.cellText,
+                value === 'X' && styles.xText,
+                value === 'O' && styles.oText,
+                isWinningCell && styles.winningText,
+              ]}
+            >
+              {value}
+            </Text>
+          )}
+        </TouchableOpacity>
+      );
+    }
+    return cells;
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.board}>
-        {board.map((cell, index) => renderCell(cell, index))}
+        <View style={styles.row}>
+          {renderRow(0)}
+        </View>
+        <View style={styles.row}>
+          {renderRow(1)}
+        </View>
+        <View style={styles.row}>
+          {renderRow(2)}
+        </View>
       </View>
     </View>
   );
@@ -71,27 +90,45 @@ const styles = StyleSheet.create({
   board: {
     width: BOARD_SIZE,
     height: BOARD_SIZE,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    backgroundColor: Config.COLORS.border,
-    borderWidth: 2,
+    backgroundColor: Config.COLORS.background,
+    padding: GAP_SIZE,
+    borderRadius: 16,
+    borderWidth: 3,
     borderColor: Config.COLORS.border,
-    borderRadius: 8,
-    gap: 2, // Spacing between cells to show grid lines
+    justifyContent: 'space-between',
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    height: CELL_SIZE,
   },
   cell: {
-    width: `${(100 / 3) - 0.5}%`, // Account for gap spacing
-    aspectRatio: 1,
+    width: CELL_SIZE,
+    height: CELL_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Config.COLORS.emptyCell,
+    backgroundColor: Config.COLORS.card,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Config.COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
   },
   winningCell: {
     backgroundColor: Config.COLORS.winningCell,
+    borderColor: Config.COLORS.secondary,
+    borderWidth: 3,
   },
   cellText: {
-    fontSize: BOARD_SIZE / 5, // Scale text relative to board size
-    fontWeight: 'bold',
+    fontSize: Math.floor(CELL_SIZE * 0.65),
+    fontWeight: '900',
+    textAlign: 'center',
   },
   xText: {
     color: Config.COLORS.xColor,
@@ -101,5 +138,8 @@ const styles = StyleSheet.create({
   },
   winningText: {
     color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
 });
