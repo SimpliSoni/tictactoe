@@ -26,18 +26,24 @@ export const GameScreen = ({ navigation }: any) => {
 
   const [winner, setWinner] = useState<PlayerSymbol | 'draw' | null>(null);
 
-  // ADD LOGGING HERE, before the conditional return
-  console.log(`Rendering GameScreen - currentGame: ${!!currentGame}, mySymbol: ${mySymbol}, user: ${!!user}`);
+  // 🔍 DEBUG LOGGING
+  console.log(`🎮 GameScreen Render - currentGame: ${!!currentGame}, mySymbol: ${mySymbol}, user: ${!!user}`);
+  if (currentGame) {
+    console.log(`🎮 GameScreen - currentGame.board:`, currentGame.board);
+    console.log(`🎮 GameScreen - currentGame.winner:`, currentGame.winner);
+  }
 
   useEffect(() => {
     // Navigate back if no game
     if (!currentGame) {
+      console.log('🎮 GameScreen - No currentGame, navigating to Home');
       navigation.replace('Home');
       return;
     }
 
     // Check for winner
     if (currentGame.winner) {
+      console.log('🎮 GameScreen - Winner detected:', currentGame.winner);
       setWinner(currentGame.winner);
       
       // Show result and navigate back
@@ -45,12 +51,14 @@ export const GameScreen = ({ navigation }: any) => {
         const isWin = currentGame.winner === mySymbol;
         const isDraw = currentGame.winner === 'draw';
         
+        console.log('🎮 GameScreen - Showing alert: isWin=' + isWin + ', isDraw=' + isDraw);
         Alert.alert(
           isDraw ? 'Draw!' : isWin ? 'You Win! 🎉' : 'You Lose 😢',
           isDraw ? 'The game ended in a draw' : isWin ? 'Congratulations!' : 'Better luck next time!',
           [{ 
             text: 'OK', 
             onPress: () => {
+              console.log('🎮 GameScreen - Alert dismissed, calling leaveGame()');
               leaveGame(); // Clean up game context state
               navigation.replace('Home');
             }
