@@ -171,6 +171,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
     socketInstance.on('gameOver', (result: { winner: PlayerSymbol | 'draw'; stats: UserStats | null; eloChange: number; winningPattern: number[] | null }) => {
       console.log('🎮 GameContext - gameOver event received:', result.winner);
+      console.log('🎮 GameContext - eloChange:', result.eloChange);
+      console.log('🎮 GameContext - stats:', result.stats);
       setIsOpponentDisconnected(false);
       
       // Use functional setState to avoid stale closure
@@ -181,12 +183,15 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             console.warn('🎮 GameContext - Received gameOver but user is null');
             return prevUser;
           }
+          console.log('🎮 GameContext - Updating user ELO from', prevUser.elo, 'to', prevUser.elo + result.eloChange);
           return {
             ...prevUser,
             stats: result.stats!,
             elo: prevUser.elo + result.eloChange,
           };
         });
+      } else {
+        console.warn('🎮 GameContext - No stats in gameOver result, skipping user update');
       }
       
       // Update current game with winner status and winning pattern to trigger GameScreen's game-over logic

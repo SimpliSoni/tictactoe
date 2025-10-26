@@ -319,6 +319,10 @@ export class SocketHandlers {
         O: 0,
       };
 
+      // ⚠️ IMPORTANT: ELO is NOT updated for forfeits/disconnects
+      // This prevents ELO manipulation through intentional disconnections
+      // Stats (wins/losses) are still updated, but ELO remains unchanged
+      // To change this behavior, remove the isForfeit check below
       if (!isForfeit) {
         if (winner === 'X') {
           const { winnerEloChange, loserEloChange } = await leaderboardService.calculateELO(playerXId, playerOId, false);
@@ -333,6 +337,8 @@ export class SocketHandlers {
           eloChanges.X = winnerEloChange;
           eloChanges.O = loserEloChange;
         }
+      } else {
+        console.log(`⚠️  ELO not updated for forfeit/disconnect in game ${game.gameId}`);
       }
 
       const [updatedXUser, updatedOUser] = await Promise.all([

@@ -16,9 +16,6 @@ const BOARD_SIZE = Math.min(width - 40, 400);
 // Calculate CELL_SIZE for text sizing only (not for cell dimensions)
 const CELL_SIZE = BOARD_SIZE / 3;
 
-// 🔍 DEBUG LOG
-console.log(`🎮 Board.tsx - Window Width: ${width}, BOARD_SIZE: ${BOARD_SIZE}, CELL_SIZE: ${CELL_SIZE}`);
-
 export const Board: React.FC<BoardProps> = ({ 
   board, 
   onCellPress, 
@@ -26,10 +23,6 @@ export const Board: React.FC<BoardProps> = ({
   mySymbol,
   winningPattern 
 }) => {
-  // 🔍 DEBUG LOG - Check what board data is received
-  console.log('🎮 Board.tsx - Rendering with board prop:', board);
-  console.log('🎮 Board.tsx - winningPattern:', winningPattern);
-  
   const renderCell = (value: CellValue, index: number) => {
     const isWinningCell = winningPattern?.includes(index);
     const isDisabled = disabled || value !== null;
@@ -85,8 +78,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     backgroundColor: Config.COLORS.background,
-    borderWidth: 3, // 🔍 DEBUG: Make thicker to see if board renders
-    borderColor: '#00FF00', // 🔍 DEBUG: Bright green border
+    borderWidth: 1,
+    borderColor: Config.COLORS.border,
     borderRadius: 8,
     overflow: 'hidden',
   },
@@ -96,9 +89,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Config.COLORS.emptyCell,
-    borderWidth: 1, // 🔍 DEBUG: Add visible border to cells
-    borderColor: '#FF00FF', // 🔍 DEBUG: Bright magenta
-    boxSizing: 'border-box', // Include borders in width calculation
   },
   cellBorderRight: {
     borderRightWidth: 1,
