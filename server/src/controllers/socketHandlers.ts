@@ -267,7 +267,7 @@ export class SocketHandlers {
 
       // Check if game over
       if (result.gameOver && result.winner !== undefined) {
-        await this.handleGameOver(socket, io, updatedGame, result.winner);
+        await this.handleGameOver(socket, io, updatedGame, result.winner, { isForfeit: false });
       }
     } catch (error) {
       console.error('❌ Make move error:', error);
@@ -283,57 +283,63 @@ export class SocketHandlers {
     _socket: Socket,
     io: Server,
     game: GameState,
-    winner: string
+    winner: string,
+    options: { isForfeit?: boolean } = {}
   ): Promise<void> {
     try {
       const playerXId = game.players.X.userId;
       const playerOId = game.players.O.userId;
+      const isForfeit = options?.isForfeit ?? false;
 
       // Update stats
       if (winner === 'X') {
         await leaderboardService.updateStats(playerXId, 'win');
         await leaderboardService.updateStats(playerOId, 'loss');
-        await leaderboardService.calculateELO(playerXId, playerOId, false);
       } else if (winner === 'O') {
         await leaderboardService.updateStats(playerOId, 'win');
         await leaderboardService.updateStats(playerXId, 'loss');
-        await leaderboardService.calculateELO(playerOId, playerXId, false);
       } else {
         // Draw
         await leaderboardService.updateStats(playerXId, 'draw');
         await leaderboardService.updateStats(playerOId, 'draw');
-        await leaderboardService.calculateELO(playerXId, playerOId, true);
       }
 
-      // Get updated user data
-      const winnerUser = winner === 'X'
-        ? await User.findById(playerXId)
-        : winner === 'O'
-        ? await User.findById(playerOId)
-        : null;
+      const eloChanges = {
+        X: 0,
+        O: 0,
+      };
 
-      const loserUser = winner === 'X'
-        ? await User.findById(playerOId)
-        : winner === 'O'
-        ? await User.findById(playerXId)
-        : null;
+      if (!isForfeit) {
+        if (winner === 'X') {
+          const { winnerEloChange, loserEloChange } = await leaderboardService.calculateELO(playerXId, playerOId, false);
+          eloChanges.X = winnerEloChange;
+          eloChanges.O = loserEloChange;
+        } else if (winner === 'O') {
+          const { winnerEloChange, loserEloChange } = await leaderboardService.calculateELO(playerOId, playerXId, false);
+          eloChanges.O = winnerEloChange;
+          eloChanges.X = loserEloChange;
+        } else {
+          const { winnerEloChange, loserEloChange } = await leaderboardService.calculateELO(playerXId, playerOId, true);
+          eloChanges.X = winnerEloChange;
+          eloChanges.O = loserEloChange;
+        }
+      }
+
+      const [updatedXUser, updatedOUser] = await Promise.all([
+        User.findById(playerXId),
+        User.findById(playerOId),
+      ]);
 
       // Emit game over to both players
       const socket1 = io.sockets.sockets.get(game.players.X.socketId);
       const socket2 = io.sockets.sockets.get(game.players.O.socketId);
 
-      const userData = winner === 'X'
-        ? { stats: winnerUser?.stats, eloChange: (winnerUser?.elo ?? 0) - 1000 }
-        : winner === 'O'
-        ? { stats: loserUser?.stats, eloChange: (loserUser?.elo ?? 0) - 1000 }
-        : { stats: winnerUser?.stats, eloChange: 0 };
-
       if (socket1) {
         socket1.emit('gameOver', {
           winner: winner as any,
           finalBoard: game.board,
-          stats: userData.stats,
-          eloChange: userData.eloChange,
+          stats: updatedXUser?.stats ?? null,
+          eloChange: eloChanges.X,
         });
       }
 
@@ -341,8 +347,8 @@ export class SocketHandlers {
         socket2.emit('gameOver', {
           winner: winner as any,
           finalBoard: game.board,
-          stats: userData.stats,
-          eloChange: userData.eloChange,
+          stats: updatedOUser?.stats ?? null,
+          eloChange: eloChanges.O,
         });
       }
 
@@ -358,31 +364,29 @@ export class SocketHandlers {
   /**
    * Handle leave game
    */
-  private static handleLeaveGame(
+  private static async handleLeaveGame(
     socket: Socket<ClientToServerEvents, ServerToClientEvents>,
     io: Server
-  ): void {
+  ): Promise<void> {
     try {
       const game = gameManager.getGameBySocket(socket.id);
-      if (game) {
-        gameManager.forfeitGame(game.gameId, socket.id);
+      if (!game) {
+        return;
+      }
 
-        // Notify opponent
-        const opponent = game.players.X.socketId === socket.id
-          ? game.players.O
-          : game.players.X;
+      const forfeitingPlayer = game.players.X.socketId === socket.id ? 'X'
+        : game.players.O.socketId === socket.id ? 'O'
+        : null;
 
-        const opponentSocket = io.sockets.sockets.get(opponent.socketId);
-        if (opponentSocket) {
-          opponentSocket.emit('gameOver', {
-            winner: opponent.symbol,
-            finalBoard: game.board,
-            stats: null,
-            eloChange: 0,
-          });
-        }
+      if (!forfeitingPlayer) {
+        return;
+      }
 
-        gameManager.endGame(game.gameId);
+      const winner = forfeitingPlayer === 'X' ? 'O' : 'X';
+      const forfeitedGame = gameManager.forfeitGame(game.gameId, socket.id);
+
+      if (forfeitedGame) {
+        await this.handleGameOver(socket, io, forfeitedGame, winner, { isForfeit: true });
       }
     } catch (error) {
       console.error('❌ Leave game error:', error);
@@ -407,7 +411,7 @@ export class SocketHandlers {
       const winner = forfeitingPlayer === 'X' ? 'O' : 'X';
 
       gameManager.forfeitGame(game.gameId, socket.id);
-      await this.handleGameOver(socket, io, game, winner);
+      await this.handleGameOver(socket, io, game, winner, { isForfeit: true });
     } catch (error) {
       console.error('❌ Forfeit error:', error);
       socket.emit('error', { message: 'Forfeit failed' });
@@ -429,7 +433,28 @@ export class SocketHandlers {
       matchmakingService.removePlayerFromQueue(socket.id);
 
       // Handle game disconnect
-      const result = gameManager.handleDisconnect(socket.id, config.reconnectTimeout);
+      const result = gameManager.handleDisconnect(
+        socket.id,
+        config.reconnectTimeout,
+        (gameState, forfeitingSocketId) => {
+          const forfeitingPlayer = gameState.players.X.socketId === forfeitingSocketId ? 'X'
+            : gameState.players.O.socketId === forfeitingSocketId ? 'O'
+            : null;
+
+          if (!forfeitingPlayer) {
+            return;
+          }
+
+          const winner = forfeitingPlayer === 'X' ? 'O' : 'X';
+          const forfeitedGame = gameManager.forfeitGame(gameState.gameId, forfeitingSocketId);
+
+          if (forfeitedGame) {
+            this.handleGameOver(socket, io, forfeitedGame, winner, { isForfeit: true }).catch((error) => {
+              console.error('❌ Auto-forfeit handling error:', error);
+            });
+          }
+        }
+      );
 
       if (result) {
         const game = gameManager.getGame(result.gameId);
@@ -444,16 +469,6 @@ export class SocketHandlers {
               timeoutSeconds: config.reconnectTimeout,
             });
           }
-        }
-
-        // Auto forfeit after timeout
-        if (result.shouldForfeit) {
-          setTimeout(() => {
-            const game = gameManager.getGame(result.gameId);
-            if (game && game.status === 'active') {
-              gameManager.forfeitGame(result.gameId, socket.id);
-            }
-          }, config.reconnectTimeout * 1000);
         }
       }
     } catch (error) {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { socketService } from '../services/socket';
 import { getDeviceId } from '../utils/device';
 import { GameState, UserProfile, UserStats, Board, PlayerSymbol } from '../types/game';
@@ -64,17 +64,31 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const [isOpponentDisconnected, setIsOpponentDisconnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [gameOverTimeout, setGameOverTimeout] = useState<NodeJS.Timeout | null>(null);
+  const gameOverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeSocketRef = useRef<Socket | null>(null);
 
   const setupSocketListeners = (socketInstance: Socket) => {
+    if (activeSocketRef.current === socketInstance) {
+      return;
+    }
+
+    if (activeSocketRef.current && activeSocketRef.current !== socketInstance) {
+      cleanupSocketListeners(activeSocketRef.current);
+    }
+
     // Connection events
-    socketInstance.on('connect', () => {
+    socketInstance.on('connect', async () => {
       console.log('Connected to server');
       setIsConnected(true);
       
       // Auto-authenticate on connection
-      const deviceId = getDeviceId();
-      socketService.authenticate(deviceId);
+      try {
+        const deviceId = await getDeviceId();
+        socketService.authenticate(deviceId);
+      } catch (error) {
+        console.error('Failed to obtain device ID:', error);
+        setError('Unable to determine device identity');
+      }
     });
 
     socketInstance.on('disconnect', () => {
@@ -110,6 +124,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       console.log('Match found!', game.gameId);
       setIsInQueue(false);
       setQueuePosition(null);
+      setIsOpponentDisconnected(false);
+      setError(null);
       setCurrentGame(game);
       
       // Determine my symbol by comparing socket ID to avoid race condition with user state
@@ -138,6 +154,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
     socketInstance.on('opponentMove', (data: { position: number; board: Board; nextTurn: PlayerSymbol }) => {
       console.log('Opponent moved:', data.position);
+      setIsOpponentDisconnected(false);
       // Use functional setState to avoid stale closure
       setCurrentGame((prevGame) => {
         if (!prevGame) {
@@ -154,6 +171,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
     socketInstance.on('gameOver', (result: { winner: PlayerSymbol | 'draw'; stats: UserStats | null; eloChange: number }) => {
       console.log('Game over:', result.winner);
+      setIsOpponentDisconnected(false);
       
       // Use functional setState to avoid stale closure
       // Only update stats if provided (not null for forfeit/leave scenarios)
@@ -173,17 +191,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       
       // Show game result with cleanup
       // Clear any existing timeout first
-      if (gameOverTimeout) {
-        clearTimeout(gameOverTimeout);
+      if (gameOverTimeoutRef.current) {
+        clearTimeout(gameOverTimeoutRef.current);
       }
-      
+
       const timeout = setTimeout(() => {
         setCurrentGame(null);
         setMySymbol(null);
-        setGameOverTimeout(null);
+        gameOverTimeoutRef.current = null;
       }, 3000); // Show result for 3 seconds
       
-      setGameOverTimeout(timeout);
+      gameOverTimeoutRef.current = timeout;
     });
 
     socketInstance.on('opponentDisconnected', (data: { timeoutSeconds: number }) => {
@@ -203,6 +221,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       console.error('Server error:', data.message);
       setError(data.message);
     });
+
+    activeSocketRef.current = socketInstance;
   };
 
   const cleanupSocketListeners = (socketInstance: Socket) => {
@@ -220,26 +240,29 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     socketInstance.off('opponentReconnected');
     socketInstance.off('error');
     console.log('Socket listeners cleaned up');
+    if (activeSocketRef.current === socketInstance) {
+      activeSocketRef.current = null;
+    }
   };
 
-  const connect = () => {
+  const connect = useCallback(() => {
     const socketInstance = socketService.connect();
     setSocket(socketInstance);
     setupSocketListeners(socketInstance);
-  };
+  }, []);
 
-  const disconnect = () => {
-    // Clean up timeout if exists
-    if (gameOverTimeout) {
-      clearTimeout(gameOverTimeout);
-      setGameOverTimeout(null);
+  const disconnect = useCallback(() => {
+    if (gameOverTimeoutRef.current) {
+      clearTimeout(gameOverTimeoutRef.current);
+      gameOverTimeoutRef.current = null;
     }
-    
-    // Clean up listeners before disconnecting
-    if (socket) {
-      cleanupSocketListeners(socket);
+
+    const socketToCleanup = activeSocketRef.current ?? socket;
+    if (socketToCleanup) {
+      cleanupSocketListeners(socketToCleanup);
     }
-    
+    activeSocketRef.current = null;
+
     socketService.disconnect();
     setIsConnected(false);
     setIsAuthenticated(false);
@@ -247,10 +270,13 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setCurrentGame(null);
     setMySymbol(null);
     setIsInQueue(false);
+    setQueuePosition(null);
+    setIsOpponentDisconnected(false);
+    setError(null);
     setSocket(null);
-  };
+  }, [socket]);
 
-  const setUsername = (username: string) => {
+  const setUsername = useCallback((username: string) => {
     // Use functional setState to avoid potential stale state
     setUser((prevUser) => {
       if (!prevUser) {
@@ -259,20 +285,20 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       }
       return { ...prevUser, username };
     });
-  };
+  }, []);
 
-  const joinQueue = () => {
+  const joinQueue = useCallback(() => {
     socketService.joinQueue();
     setIsInQueue(true);
-  };
+  }, []);
 
-  const leaveQueue = () => {
+  const leaveQueue = useCallback(() => {
     socketService.leaveQueue();
     setIsInQueue(false);
     setQueuePosition(null);
-  };
+  }, []);
 
-  const makeMove = (position: number) => {
+  const makeMove = useCallback((position: number) => {
     if (!currentGame || !mySymbol) return;
     if (currentGame.currentTurn !== mySymbol) {
       setError("It's not your turn!");
@@ -298,23 +324,35 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
         currentTurn: nextTurn,
       };
     });
-  };
+  }, [currentGame, mySymbol]);
 
-  const leaveGame = () => {
+  const leaveGame = useCallback(() => {
     socketService.leaveGame();
+    if (gameOverTimeoutRef.current) {
+      clearTimeout(gameOverTimeoutRef.current);
+      gameOverTimeoutRef.current = null;
+    }
     setCurrentGame(null);
     setMySymbol(null);
-  };
-
-  const forfeit = () => {
-    socketService.forfeit();
-    setCurrentGame(null);
-    setMySymbol(null);
-  };
-
-  const clearError = () => {
+    setIsOpponentDisconnected(false);
     setError(null);
-  };
+  }, []);
+
+  const forfeit = useCallback(() => {
+    socketService.forfeit();
+    if (gameOverTimeoutRef.current) {
+      clearTimeout(gameOverTimeoutRef.current);
+      gameOverTimeoutRef.current = null;
+    }
+    setCurrentGame(null);
+    setMySymbol(null);
+    setIsOpponentDisconnected(false);
+    setError(null);
+  }, []);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
 
   const isMyTurn = currentGame && mySymbol ? currentGame.currentTurn === mySymbol : false;
 

@@ -244,7 +244,11 @@ export class GameManager {
    * Marks player as disconnected and sets timeout for forfeit
    * If opponent is also disconnected, end game immediately
    */
-  public handleDisconnect(socketId: string, timeoutSeconds: number): { gameId: string; shouldForfeit: boolean } | null {
+  public handleDisconnect(
+    socketId: string,
+    timeoutSeconds: number,
+    onTimeout?: (game: GameState, forfeitingSocketId: string) => void
+  ): { gameId: string; shouldForfeit: boolean } | null {
     const game = this.getGameBySocket(socketId);
     if (!game || game.status !== 'active') {
       return null;
@@ -265,7 +269,16 @@ export class GameManager {
     }
 
     const timeout = setTimeout(() => {
-      this.forfeitGame(game.gameId, socketId);
+      const activeGame = this.getGame(game.gameId);
+      if (!activeGame || activeGame.status !== 'active') {
+        return;
+      }
+
+      if (onTimeout) {
+        onTimeout(activeGame, socketId);
+      } else {
+        this.forfeitGame(game.gameId, socketId);
+      }
     }, timeoutSeconds * 1000);
 
     this.disconnectTimeouts.set(socketId, timeout);

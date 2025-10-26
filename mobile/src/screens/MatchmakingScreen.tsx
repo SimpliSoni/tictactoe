@@ -20,17 +20,18 @@ export const MatchmakingScreen = ({ navigation }: any) => {
   } = useGame();
 
   useEffect(() => {
-    // Auto-join queue when entering screen
+    // Auto-join queue when entering screen or returning after a game
     if (!isInQueue && !currentGame) {
       joinQueue();
     }
+  }, [isInQueue, currentGame, joinQueue]);
 
-    // Cleanup: Leave queue when leaving screen
+  useEffect(() => {
+    // Cleanup: leave queue when navigating away
     return () => {
-      // Use a ref or check current state to avoid stale closure
       leaveQueue();
     };
-  }, [joinQueue, leaveQueue]); // ✅ Added dependencies
+  }, [leaveQueue]);
 
   useEffect(() => {
     // Navigate to game when match is found

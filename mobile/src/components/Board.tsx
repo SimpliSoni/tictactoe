@@ -25,12 +25,16 @@ export const Board: React.FC<BoardProps> = ({
   const renderCell = (value: CellValue, index: number) => {
     const isWinningCell = winningPattern?.includes(index);
     const isDisabled = disabled || value !== null;
+    const isRightColumn = (index + 1) % 3 === 0;
+    const isBottomRow = index >= 6;
 
     return (
       <TouchableOpacity
         key={index}
         style={[
           styles.cell,
+          !isRightColumn && styles.cellBorderRight,
+          !isBottomRow && styles.cellBorderBottom,
           isWinningCell && styles.winningCell,
         ]}
         onPress={() => !isDisabled && onCellPress(index)}
@@ -79,13 +83,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cell: {
-    width: CELL_SIZE,
-    height: CELL_SIZE,
+    width: '33.3333%',
+    aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Config.COLORS.border,
     backgroundColor: Config.COLORS.emptyCell,
+  },
+  cellBorderRight: {
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: Config.COLORS.border,
+  },
+  cellBorderBottom: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Config.COLORS.border,
   },
   winningCell: {
     backgroundColor: Config.COLORS.winningCell,
