@@ -8,6 +8,7 @@ import compression from 'compression';
 import { config, validateConfig } from './config/env';
 import { database } from './config/database';
 import { SocketHandlers } from './controllers/socketHandlers';
+import { gameManager } from './services/gameManager';
 import apiRoutes from './controllers/apiRoutes';
 
 /**
@@ -137,6 +138,13 @@ class TicTacToeServer {
       // Graceful shutdown
       process.on('SIGTERM', () => this.shutdown());
       process.on('SIGINT', () => this.shutdown());
+
+      // 🧹 Setup periodic cleanup for abandoned games (every 5 minutes)
+      setInterval(() => {
+        gameManager.cleanupAbandonedGames();
+      }, 5 * 60 * 1000); // 5 minutes
+
+      console.log('🧹 Periodic cleanup task started (every 5 minutes)');
     } catch (error) {
       console.error('❌ Failed to start server:', error);
       process.exit(1);

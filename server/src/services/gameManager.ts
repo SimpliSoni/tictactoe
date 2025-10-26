@@ -13,6 +13,7 @@ export class GameManager {
   private activeGames: Map<string, GameState> = new Map();
   private playerToGame: Map<string, string> = new Map(); // socketId -> gameId
   private disconnectTimeouts: Map<string, NodeJS.Timeout> = new Map();
+  private moveLocks: Map<string, boolean> = new Map(); // gameId -> isProcessing (prevents race conditions)
 
   private constructor() {}
 
@@ -90,108 +91,143 @@ export class GameManager {
   /**
    * Make a move in a game
    * SERVER-AUTHORITATIVE: Validates everything before accepting move
+   * RACE CONDITION PREVENTION: Uses locking mechanism
    * @returns Result of move attempt
    */
   public makeMove(gameId: string, socketId: string, position: number): MoveResult {
-    const game = this.getGame(gameId);
-
-    // Validate game exists
-    if (!game) {
+    // 🔒 PREVENT RACE CONDITION: Check if another move is being processed
+    if (this.moveLocks.get(gameId)) {
       return {
         success: false,
-        error: 'Game not found',
+        error: 'Move already in progress, please wait',
       };
     }
 
-    // Validate game is active
-    if (game.status !== 'active') {
-      return {
-        success: false,
-        error: 'Game is not active',
-      };
-    }
+    // Lock this game while processing
+    this.moveLocks.set(gameId, true);
 
-    // Determine player symbol
-    const playerSymbol = this.getPlayerSymbol(game, socketId);
-    if (!playerSymbol) {
-      return {
-        success: false,
-        error: 'You are not a player in this game',
-      };
-    }
+    try {
+      const game = this.getGame(gameId);
 
-    // Validate it's player's turn
-    if (game.currentTurn !== playerSymbol) {
-      return {
-        success: false,
-        error: `It's not your turn. Current turn: ${game.currentTurn}`,
-      };
-    }
+      // Validate game exists
+      if (!game) {
+        this.moveLocks.delete(gameId);
+        return {
+          success: false,
+          error: 'Game not found',
+        };
+      }
 
-    // Validate position
-    if (!Number.isInteger(position) || position < 0 || position > 8) {
-      return {
-        success: false,
-        error: 'Invalid position: must be 0-8',
-      };
-    }
+      // Validate game is active
+      if (game.status !== 'active') {
+        this.moveLocks.delete(gameId);
+        return {
+          success: false,
+          error: 'Game is not active',
+        };
+      }
 
-    // Validate board state is not corrupted
-    if (!GameLogic.isValidBoardState(game.board)) {
-      console.error(`❌ Corrupted board state detected in game ${gameId}`);
-      return {
-        success: false,
-        error: 'Game state corrupted',
-      };
-    }
+      // Determine player symbol
+      const playerSymbol = this.getPlayerSymbol(game, socketId);
+      if (!playerSymbol) {
+        this.moveLocks.delete(gameId);
+        return {
+          success: false,
+          error: 'You are not a player in this game',
+        };
+      }
 
-    // Validate move is legal
-    if (!GameLogic.isValidMove(position, game.board)) {
-      return {
-        success: false,
-        error: 'That cell is already occupied',
-      };
-    }
+      // Validate it's player's turn
+      if (game.currentTurn !== playerSymbol) {
+        this.moveLocks.delete(gameId);
+        return {
+          success: false,
+          error: `It's not your turn. Current turn: ${game.currentTurn}`,
+        };
+      }
 
-    // ✅ MAKE THE MOVE - Server-side only
-    const boardCopy = GameLogic.cloneBoard(game.board);
-    GameLogic.makeMove(boardCopy, position, playerSymbol);
+      // Validate position
+      if (!Number.isInteger(position) || position < 0 || position > 8) {
+        this.moveLocks.delete(gameId);
+        return {
+          success: false,
+          error: 'Invalid position: must be 0-8',
+        };
+      }
 
-    // Update game state
-    game.board = boardCopy;
-    game.moves.push({
-      player: playerSymbol,
-      position,
-      timestamp: new Date(),
-    });
-    game.lastMoveAt = new Date();
-    game.players[playerSymbol].lastActivity = new Date();
+      // Validate board state is not corrupted
+      if (!GameLogic.isValidBoardState(game.board)) {
+        this.moveLocks.delete(gameId);
+        console.error(`❌ Corrupted board state detected in game ${gameId}`);
+        return {
+          success: false,
+          error: 'Game state corrupted',
+        };
+      }
 
-    // Check if game is over
-    const { isOver, winner } = GameLogic.checkGameOver(game.board);
+      // Validate move is legal
+      if (!GameLogic.isValidMove(position, game.board)) {
+        this.moveLocks.delete(gameId);
+        return {
+          success: false,
+          error: 'That cell is already occupied',
+        };
+      }
 
-    if (isOver) {
-      // 🏁 GAME OVER
-      game.status = 'completed';
-      game.winner = winner;
-      console.log(`🏁 Game ${gameId} completed. Winner: ${winner}`);
+      // ✅ MAKE THE MOVE - Server-side only
+      const boardCopy = GameLogic.cloneBoard(game.board);
+      GameLogic.makeMove(boardCopy, position, playerSymbol);
+
+      // Update game state
+      game.board = boardCopy;
+      game.moves.push({
+        player: playerSymbol,
+        position,
+        timestamp: new Date(),
+      });
+      game.lastMoveAt = new Date();
+      game.players[playerSymbol].lastActivity = new Date();
+
+      // Check if game is over
+      const { isOver, winner } = GameLogic.checkGameOver(game.board);
+
+      if (isOver) {
+        // 🏁 GAME OVER
+        game.status = 'completed';
+        game.winner = winner;
+        console.log(`🏁 Game ${gameId} completed. Winner: ${winner}`);
+        
+        // Release lock before returning
+        this.moveLocks.delete(gameId);
+
+        return {
+          success: true,
+          gameState: game,
+          gameOver: true,
+          winner: winner || undefined,
+        };
+      }
+
+      // ↪️ SWITCH TURN
+      game.currentTurn = GameLogic.getOpponentSymbol(playerSymbol);
+
+      // Release lock before returning
+      this.moveLocks.delete(gameId);
 
       return {
         success: true,
         gameState: game,
-        gameOver: true,
-        winner: winner || undefined,
+        gameOver: false,
+      };
+    } catch (error) {
+      // 🔓 ALWAYS release lock on error
+      this.moveLocks.delete(gameId);
+      console.error(`❌ Move processing error in game ${gameId}:`, error);
+      return {
+        success: false,
+        error: 'Failed to process move',
       };
     }
-
-    // ↪️ SWITCH TURN
-    game.currentTurn = GameLogic.getOpponentSymbol(playerSymbol);
-
-    return {
-      success: true,
-      gameState: game,
-      gameOver: false,
-    };
   }
 
   /**
@@ -340,6 +376,45 @@ export class GameManager {
     // Clear disconnect timeouts
     this.disconnectTimeouts.delete(game.players.X.socketId);
     this.disconnectTimeouts.delete(game.players.O.socketId);
+    
+    // 🔓 Clear move lock to prevent memory leak
+    this.moveLocks.delete(gameId);
+    
+    console.log(`🧹 Game ${gameId} cleaned up from memory`);
+  }
+
+  /**
+   * Clean up abandoned games (memory leak prevention)
+   * Call this periodically (e.g., every 5 minutes)
+   * Removes games that have been inactive for > 1 hour
+   */
+  public cleanupAbandonedGames(): void {
+    const now = Date.now();
+    const ONE_HOUR = 60 * 60 * 1000;
+    let cleanedCount = 0;
+
+    this.activeGames.forEach((game, gameId) => {
+      const lastActivity = game.lastMoveAt.getTime();
+      const timeSinceActivity = now - lastActivity;
+
+      if (timeSinceActivity > ONE_HOUR) {
+        console.log(`🧹 Cleaning up abandoned game: ${gameId} (inactive for ${Math.round(timeSinceActivity / 60000)} minutes)`);
+        
+        // Mark as abandoned
+        game.status = 'abandoned';
+        
+        // Persist to database (async, fire and forget)
+        this.endGame(gameId).catch(err => {
+          console.error(`Failed to persist abandoned game ${gameId}:`, err);
+        });
+        
+        cleanedCount++;
+      }
+    });
+
+    if (cleanedCount > 0) {
+      console.log(`🧹 Cleaned up ${cleanedCount} abandoned game(s)`);
+    }
   }
 
   /**

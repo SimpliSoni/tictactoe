@@ -43,9 +43,28 @@ export class SocketHandlers {
     try {
       const { deviceId, username } = data;
 
+      // Validate device ID
       if (!deviceId || typeof deviceId !== 'string') {
         socket.emit('error', { message: 'Invalid device ID' });
         return;
+      }
+
+      // Validate username if provided
+      if (username) {
+        // Trim whitespace
+        const trimmedUsername = username.trim();
+        
+        // Check length (3-20 characters)
+        if (trimmedUsername.length < 3 || trimmedUsername.length > 20) {
+          socket.emit('error', { message: 'Username must be between 3 and 20 characters' });
+          return;
+        }
+        
+        // Check for valid characters (alphanumeric, spaces, underscores, hyphens)
+        if (!/^[a-zA-Z0-9_ -]+$/.test(trimmedUsername)) {
+          socket.emit('error', { message: 'Username can only contain letters, numbers, spaces, underscores, and hyphens' });
+          return;
+        }
       }
 
       // Find or create user
@@ -53,7 +72,7 @@ export class SocketHandlers {
 
       if (!user) {
         // New user
-        const newUsername = username || `Player_${deviceId.substring(0, 8)}`;
+        const newUsername = username?.trim() || `Player_${deviceId.substring(0, 8)}`;
 
         user = new User({
           deviceId,
@@ -74,6 +93,11 @@ export class SocketHandlers {
         await user.save();
         console.log(`👤 New user created: ${user.username} (${deviceId})`);
       } else {
+        // Update username if provided
+        if (username && username.trim() !== user.username) {
+          user.username = username.trim();
+        }
+        
         // Update last active
         user.lastActive = new Date();
         await user.save();

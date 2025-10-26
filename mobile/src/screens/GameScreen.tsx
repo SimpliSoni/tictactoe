@@ -40,7 +40,7 @@ export const GameScreen = ({ navigation }: any) => {
       setWinner(currentGame.winner);
       
       // Show result and navigate back
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
         const isWin = currentGame.winner === mySymbol;
         const isDraw = currentGame.winner === 'draw';
         
@@ -50,8 +50,11 @@ export const GameScreen = ({ navigation }: any) => {
           [{ text: 'OK', onPress: () => navigation.replace('Home') }]
         );
       }, 1000);
+      
+      // Cleanup timeout on unmount
+      return () => clearTimeout(timeout);
     }
-  }, [currentGame]);
+  }, [currentGame, mySymbol, navigation]); // ✅ Added all dependencies
 
   const handleCellPress = (position: number) => {
     if (!isMyTurn || winner) return;

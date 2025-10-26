@@ -64,6 +64,7 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const [isOpponentDisconnected, setIsOpponentDisconnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [gameOverTimeout, setGameOverTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const setupSocketListeners = (socketInstance: Socket) => {
     // Connection events
@@ -111,19 +112,21 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       setQueuePosition(null);
       setCurrentGame(game);
       
-      // Determine my symbol - ADD LOGGING HERE
-      if (user) {
-        let symbol: PlayerSymbol | null = null; // Variable to hold the symbol
-        if (game.players.X.userId === user.userId) {
-          symbol = 'X';
-        } else if (game.players.O.userId === user.userId) { // Added explicit check
-          symbol = 'O';
-        }
-        console.log(`Determined mySymbol: ${symbol} (User ID: ${user.userId}, X ID: ${game.players.X.userId}, O ID: ${game.players.O.userId})`); // Log determination
-        setMySymbol(symbol); // Set the symbol
+      // Determine my symbol by comparing socket ID to avoid race condition with user state
+      // The socketInstance.id is always available and doesn't suffer from stale closure issues
+      if (socketInstance.id === game.players.X.socketId) {
+        console.log('Determined mySymbol: X (Socket ID: ' + socketInstance.id + ')');
+        setMySymbol('X');
+      } else if (socketInstance.id === game.players.O.socketId) {
+        console.log('Determined mySymbol: O (Socket ID: ' + socketInstance.id + ')');
+        setMySymbol('O');
       } else {
-        console.error('Match found but user data is missing!'); // Log if user is missing
-        setError('User data missing when match found.');
+        // This should not happen, but good to have a check
+        console.error('Match found but my socket ID is not in the game object!');
+        console.error('My Socket ID:', socketInstance.id);
+        console.error('Player X Socket ID:', game.players.X.socketId);
+        console.error('Player O Socket ID:', game.players.O.socketId);
+        setError('Error joining match: Player not found in game.');
       }
     });
 
@@ -135,32 +138,52 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
 
     socketInstance.on('opponentMove', (data: { position: number; board: Board; nextTurn: PlayerSymbol }) => {
       console.log('Opponent moved:', data.position);
-      if (currentGame) {
-        setCurrentGame({
-          ...currentGame,
+      // Use functional setState to avoid stale closure
+      setCurrentGame((prevGame) => {
+        if (!prevGame) {
+          console.warn('Received opponentMove but currentGame is null');
+          return prevGame;
+        }
+        return {
+          ...prevGame,
           board: data.board,
           currentTurn: data.nextTurn,
-        });
-      }
+        };
+      });
     });
 
-    socketInstance.on('gameOver', (result: { winner: PlayerSymbol | 'draw'; stats: UserStats; eloChange: number }) => {
+    socketInstance.on('gameOver', (result: { winner: PlayerSymbol | 'draw'; stats: UserStats | null; eloChange: number }) => {
       console.log('Game over:', result.winner);
       
-      // Update user stats
-      if (user) {
-        setUser({
-          ...user,
-          stats: result.stats,
-          elo: user.elo + result.eloChange,
+      // Use functional setState to avoid stale closure
+      // Only update stats if provided (not null for forfeit/leave scenarios)
+      if (result.stats) {
+        setUser((prevUser) => {
+          if (!prevUser) {
+            console.warn('Received gameOver but user is null');
+            return prevUser;
+          }
+          return {
+            ...prevUser,
+            stats: result.stats!,
+            elo: prevUser.elo + result.eloChange,
+          };
         });
       }
       
-      // Show game result
-      setTimeout(() => {
+      // Show game result with cleanup
+      // Clear any existing timeout first
+      if (gameOverTimeout) {
+        clearTimeout(gameOverTimeout);
+      }
+      
+      const timeout = setTimeout(() => {
         setCurrentGame(null);
         setMySymbol(null);
+        setGameOverTimeout(null);
       }, 3000); // Show result for 3 seconds
+      
+      setGameOverTimeout(timeout);
     });
 
     socketInstance.on('opponentDisconnected', (data: { timeoutSeconds: number }) => {
@@ -182,6 +205,23 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     });
   };
 
+  const cleanupSocketListeners = (socketInstance: Socket) => {
+    // Remove all listeners to prevent memory leaks
+    socketInstance.off('connect');
+    socketInstance.off('disconnect');
+    socketInstance.off('connect_error');
+    socketInstance.off('authenticated');
+    socketInstance.off('queueStatus');
+    socketInstance.off('matchFound');
+    socketInstance.off('gameUpdate');
+    socketInstance.off('opponentMove');
+    socketInstance.off('gameOver');
+    socketInstance.off('opponentDisconnected');
+    socketInstance.off('opponentReconnected');
+    socketInstance.off('error');
+    console.log('Socket listeners cleaned up');
+  };
+
   const connect = () => {
     const socketInstance = socketService.connect();
     setSocket(socketInstance);
@@ -189,6 +229,17 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   };
 
   const disconnect = () => {
+    // Clean up timeout if exists
+    if (gameOverTimeout) {
+      clearTimeout(gameOverTimeout);
+      setGameOverTimeout(null);
+    }
+    
+    // Clean up listeners before disconnecting
+    if (socket) {
+      cleanupSocketListeners(socket);
+    }
+    
     socketService.disconnect();
     setIsConnected(false);
     setIsAuthenticated(false);
@@ -200,9 +251,14 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   };
 
   const setUsername = (username: string) => {
-    if (user) {
-      setUser({ ...user, username });
-    }
+    // Use functional setState to avoid potential stale state
+    setUser((prevUser) => {
+      if (!prevUser) {
+        console.warn('Attempted to set username but user is null');
+        return prevUser;
+      }
+      return { ...prevUser, username };
+    });
   };
 
   const joinQueue = () => {
@@ -229,14 +285,18 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     
     socketService.makeMove(position);
     
-    // Optimistically update UI
-    const newBoard = [...currentGame.board] as Board;
-    newBoard[position] = mySymbol;
-    const nextTurn = mySymbol === 'X' ? 'O' : 'X';
-    setCurrentGame({
-      ...currentGame,
-      board: newBoard,
-      currentTurn: nextTurn,
+    // Optimistically update UI using functional setState
+    setCurrentGame((prevGame) => {
+      if (!prevGame || !mySymbol) return prevGame;
+      
+      const newBoard = [...prevGame.board] as Board;
+      newBoard[position] = mySymbol;
+      const nextTurn: PlayerSymbol = mySymbol === 'X' ? 'O' : 'X';
+      return {
+        ...prevGame,
+        board: newBoard,
+        currentTurn: nextTurn,
+      };
     });
   };
 

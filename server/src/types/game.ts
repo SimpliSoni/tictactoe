@@ -85,7 +85,7 @@ export interface ServerToClientEvents {
   gameOver: (result: { 
     winner: PlayerSymbol | 'draw'; 
     finalBoard: Board; 
-    stats: UserStats;
+    stats: UserStats | null;  // ✅ Made optional for leave/forfeit scenarios
     eloChange: number;
   }) => void;
   opponentDisconnected: (data: { timeoutSeconds: number }) => void;

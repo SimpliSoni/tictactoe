@@ -25,20 +25,19 @@ export const MatchmakingScreen = ({ navigation }: any) => {
       joinQueue();
     }
 
+    // Cleanup: Leave queue when leaving screen
     return () => {
-      // Leave queue when leaving screen
-      if (isInQueue) {
-        leaveQueue();
-      }
+      // Use a ref or check current state to avoid stale closure
+      leaveQueue();
     };
-  }, []);
+  }, [joinQueue, leaveQueue]); // ✅ Added dependencies
 
   useEffect(() => {
     // Navigate to game when match is found
     if (currentGame) {
       navigation.replace('Game');
     }
-  }, [currentGame]);
+  }, [currentGame, navigation]); // ✅ Added navigation dependency
 
   const handleCancel = () => {
     leaveQueue();
