@@ -36,7 +36,7 @@ function getEnvNumber(key: string, defaultValue: number): number {
 
 export const config: Config = {
   nodeEnv: getEnvVar('NODE_ENV', 'development'),
-  port: getEnvNumber('PORT', 3000),
+  port: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
   mongodbUri: getEnvVar('MONGODB_URI'),
   jwtSecret: getEnvVar('JWT_SECRET'),
   corsOrigin: getEnvVar('CORS_ORIGIN', '*'),
