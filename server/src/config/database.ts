@@ -43,14 +43,19 @@ export class Database {
       
       // Handle connection events
       mongoose.connection.on('error', (error) => {
-        console.error('❌ MongoDB connection error:', error);
+        console.error(`❌ MongoDB connection error event at ${new Date().toISOString()}:`, error);
         this.isConnected = false;
       });
 
       mongoose.connection.on('disconnected', () => {
-        console.warn('⚠️  MongoDB disconnected. Attempting to reconnect...');
+        console.warn(`⚠️ MongoDB disconnected event at ${new Date().toISOString()}. Attempting to reconnect...`);
         this.isConnected = false;
         this.reconnect();
+      });
+
+      mongoose.connection.on('reconnected', () => {
+        console.log(`✅ MongoDB reconnected successfully at ${new Date().toISOString()}`);
+        this.isConnected = true;
       });
 
     } catch (error) {

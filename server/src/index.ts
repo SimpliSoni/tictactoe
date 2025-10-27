@@ -11,6 +11,23 @@ import { SocketHandlers } from './controllers/socketHandlers';
 import { gameManager } from './services/gameManager';
 import apiRoutes from './controllers/apiRoutes';
 
+// ========================
+// 🛡️ Global Error Handlers
+// ========================
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Promise Rejection at:', promise);
+  console.error('Reason:', reason);
+  // Log to external service in production if available
+  // Consider process.exit(1) for critical errors
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception thrown:', error);
+  console.error('Stack:', error instanceof Error ? error.stack : 'N/A');
+  // Log to external service in production if available
+  // Consider process.exit(1) for critical errors
+});
+
 /**
  * Production-ready multiplayer Tic-Tac-Toe server
  * - Server-authoritative game logic
@@ -135,6 +152,7 @@ class TicTacToeServer {
 
     // Health check endpoint (for Railway/other orchestration)
     this.app.get('/health', (_req, res) => {
+      console.log(`🩺 Health check endpoint hit at ${new Date().toISOString()}`);
       res.status(200).set('Content-Type', 'application/json').json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
@@ -210,7 +228,13 @@ class TicTacToeServer {
           
           // 🧹 Setup periodic cleanup for abandoned games (every 5 minutes)
           setInterval(() => {
-            gameManager.cleanupAbandonedGames();
+            try {
+              console.log(`🧹 Running cleanup task at ${new Date().toISOString()}`);
+              gameManager.cleanupAbandonedGames();
+              console.log(`✅ Cleanup task completed successfully at ${new Date().toISOString()}`);
+            } catch (error) {
+              console.error('❌ Error during periodic cleanup task:', error);
+            }
           }, 5 * 60 * 1000); // 5 minutes
 
           console.log('🧹 Periodic cleanup task started (every 5 minutes)');
