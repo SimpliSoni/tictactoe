@@ -52,9 +52,16 @@ class TicTacToeServer {
    * Setup middleware
    */
   private setupMiddleware(): void {
+    // Request logging (do this FIRST before other middleware)
+    this.app.use((req, _res, next) => {
+      console.log(`📨 ${req.method} ${req.path}`);
+      next();
+    });
+
     // Security
     this.app.use(helmet({
       crossOriginResourcePolicy: { policy: 'cross-origin' },
+      contentSecurityPolicy: false,
     }));
 
     // Compression
@@ -86,12 +93,6 @@ class TicTacToeServer {
     // Parsing
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ limit: '10mb', extended: true }));
-
-    // Request logging
-    this.app.use((req, _res, next) => {
-      console.log(`📨 ${req.method} ${req.path}`);
-      next();
-    });
   }
 
   /**
@@ -100,16 +101,17 @@ class TicTacToeServer {
   private setupRoutes(): void {
     // Health check root
     this.app.get('/', (_req, res) => {
-      res.json({
+      res.status(200).set('Content-Type', 'application/json').json({
         message: 'Multiplayer Tic-Tac-Toe Server',
         version: '1.0.0',
         status: 'running',
+        timestamp: new Date().toISOString(),
       });
     });
 
     // Health check endpoint (for Railway/other orchestration)
     this.app.get('/health', (_req, res) => {
-      res.status(200).json({
+      res.status(200).set('Content-Type', 'application/json').json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
       });
