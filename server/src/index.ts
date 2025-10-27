@@ -98,9 +98,6 @@ class TicTacToeServer {
    * Setup routes
    */
   private setupRoutes(): void {
-    // API routes
-    this.app.use('/api', apiRoutes);
-
     // Health check root
     this.app.get('/', (_req, res) => {
       res.json({
@@ -109,6 +106,17 @@ class TicTacToeServer {
         status: 'running',
       });
     });
+
+    // Health check endpoint (for Railway/other orchestration)
+    this.app.get('/health', (_req, res) => {
+      res.status(200).json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    // API routes
+    this.app.use('/api', apiRoutes);
 
     // 404 handler
     this.app.use((_req, res) => {
@@ -136,6 +144,16 @@ class TicTacToeServer {
    */
   public async start(): Promise<void> {
     try {
+      // Setup graceful shutdown handlers FIRST
+      process.on('SIGTERM', () => {
+        console.log('\n🛑 Received SIGTERM signal, shutting down gracefully...');
+        this.shutdown();
+      });
+      process.on('SIGINT', () => {
+        console.log('\n🛑 Received SIGINT signal, shutting down gracefully...');
+        this.shutdown();
+      });
+
       // Validate configuration
       validateConfig();
 
@@ -151,9 +169,10 @@ class TicTacToeServer {
       // Setup socket
       this.setupSocket();
 
-      // Start listening
-      this.httpServer.listen(config.port, () => {
-        console.log(`
+      // Start listening - return a promise that resolves when server is ready
+      return new Promise((resolve, reject) => {
+        this.httpServer.listen(config.port, '0.0.0.0', () => {
+          console.log(`
 ╔════════════════════════════════════════╗
 ║   🎮 Multiplayer Tic-Tac-Toe Server   ║
 ╠════════════════════════════════════════╣
@@ -161,19 +180,22 @@ class TicTacToeServer {
 ║ 📍 Environment: ${config.nodeEnv.padEnd(16)} ║
 ║ 🌐 CORS Origin: ${config.corsOrigin}    ║
 ╚════════════════════════════════════════╝
-        `);
+          `);
+          
+          // 🧹 Setup periodic cleanup for abandoned games (every 5 minutes)
+          setInterval(() => {
+            gameManager.cleanupAbandonedGames();
+          }, 5 * 60 * 1000); // 5 minutes
+
+          console.log('🧹 Periodic cleanup task started (every 5 minutes)');
+          resolve();
+        });
+
+        this.httpServer.on('error', (error: Error) => {
+          console.error('❌ Server error:', error);
+          reject(error);
+        });
       });
-
-      // Graceful shutdown
-      process.on('SIGTERM', () => this.shutdown());
-      process.on('SIGINT', () => this.shutdown());
-
-      // 🧹 Setup periodic cleanup for abandoned games (every 5 minutes)
-      setInterval(() => {
-        gameManager.cleanupAbandonedGames();
-      }, 5 * 60 * 1000); // 5 minutes
-
-      console.log('🧹 Periodic cleanup task started (every 5 minutes)');
     } catch (error) {
       console.error('❌ Failed to start server:', error);
       process.exit(1);
@@ -184,20 +206,29 @@ class TicTacToeServer {
    * Graceful shutdown
    */
   private async shutdown(): Promise<void> {
-    console.log('\n🛑 Shutting down gracefully...');
+    console.log('\n🛑 Starting graceful shutdown...');
 
     try {
-      // Close socket
-      this.io.close();
+      // Set a timeout for shutdown (30 seconds max)
+      const shutdownTimeout = setTimeout(() => {
+        console.error('⚠️  Shutdown timeout - forcing exit');
+        process.exit(1);
+      }, 30000);
 
-      // Close HTTP server
-      this.httpServer.close(() => {
-        console.log('✅ HTTP server closed');
+      // Close new HTTP connections
+      this.httpServer.close(async () => {
+        console.log('✅ HTTP server closed (no new connections)');
       });
+
+      // Disconnect socket.io clients gracefully
+      this.io.disconnectSockets();
+      this.io.close();
+      console.log('✅ Socket.io closed');
 
       // Close database
       await database.disconnect();
 
+      clearTimeout(shutdownTimeout);
       console.log('✅ Server shut down successfully');
       process.exit(0);
     } catch (error) {
