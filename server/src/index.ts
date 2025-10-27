@@ -101,6 +101,7 @@ class TicTacToeServer {
   private setupRoutes(): void {
     // Health check root - HTML response for browser visibility
     this.app.get('/', (_req, res) => {
+      console.log('🏠 Root endpoint called');
       res.status(200).set('Content-Type', 'text/html').send(`
 <!DOCTYPE html>
 <html>
