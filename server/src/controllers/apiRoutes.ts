@@ -35,9 +35,13 @@ const parseLimit = (limitStr: string | undefined, defaultLimit: number = 50, max
  * Health check endpoint with dependency status
  */
 router.get('/health', async (_req: Request, res: Response): Promise<void> => {
+  console.log(`🩺 API Health check (/api/health) hit at ${new Date().toISOString()}`);
+  const startTime = Date.now();
+
   try {
     // Check MongoDB connection status
-    const dbHealthy = database.isHealthy(); 
+    const dbHealthy = database.isHealthy();
+    console.log(`🩺 API Health check: DB status isHealthy=${dbHealthy}`);
 
     const healthStatus = {
       status: dbHealthy ? 'ok' : 'degraded',
@@ -48,10 +52,17 @@ router.get('/health', async (_req: Request, res: Response): Promise<void> => {
     };
 
     // Return 503 if database is not healthy, otherwise 200
-    res.status(dbHealthy ? 200 : 503).json(healthStatus);
+    const statusCode = dbHealthy ? 200 : 503;
+    res.status(statusCode).json(healthStatus);
+    
+    const duration = Date.now() - startTime;
+    console.log(`🩺 API Health check completed in ${duration}ms with status ${statusCode}`);
 
   } catch (error) {
-    console.error('❌ Health check error:', error);
+    console.error('❌ API Health check error:', error);
+    const duration = Date.now() - startTime;
+    console.log(`🩺 API Health check failed after ${duration}ms`);
+    
     res.status(500).json({
       status: 'error',
       message: 'Health check failed',

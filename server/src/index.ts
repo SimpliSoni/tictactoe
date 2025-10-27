@@ -15,17 +15,26 @@ import apiRoutes from './controllers/apiRoutes';
 // 🛡️ Global Error Handlers
 // ========================
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Promise Rejection at:', promise);
+  console.error(`💥 [${new Date().toISOString()}] Unhandled Promise Rejection at:`, promise);
   console.error('Reason:', reason);
+  if (reason instanceof Error) {
+    console.error('Stack:', reason.stack);
+  }
   // Log to external service in production if available
   // Consider process.exit(1) for critical errors
 });
 
-process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception thrown:', error);
-  console.error('Stack:', error instanceof Error ? error.stack : 'N/A');
+process.on('uncaughtException', (error, origin) => {
+  console.error(`💥 [${new Date().toISOString()}] Uncaught Exception thrown from ${origin}:`, error);
+  if (error instanceof Error) {
+    console.error('Stack:', error.stack);
+  }
   // Log to external service in production if available
   // Consider process.exit(1) for critical errors
+});
+
+process.on('warning', (warning) => {
+  console.warn(`⚠️ [${new Date().toISOString()}] Process Warning:`, warning.name, warning.message);
 });
 
 /**
@@ -229,11 +238,11 @@ class TicTacToeServer {
           // 🧹 Setup periodic cleanup for abandoned games (every 5 minutes)
           setInterval(() => {
             try {
-              console.log(`🧹 Running cleanup task at ${new Date().toISOString()}`);
+              console.log(`🧹 [${new Date().toISOString()}] Starting periodic cleanup task...`);
               gameManager.cleanupAbandonedGames();
-              console.log(`✅ Cleanup task completed successfully at ${new Date().toISOString()}`);
+              console.log(`✅ [${new Date().toISOString()}] Cleanup task completed successfully`);
             } catch (error) {
-              console.error('❌ Error during periodic cleanup task:', error);
+              console.error(`❌ [${new Date().toISOString()}] Error calling gameManager.cleanupAbandonedGames:`, error);
             }
           }, 5 * 60 * 1000); // 5 minutes
 

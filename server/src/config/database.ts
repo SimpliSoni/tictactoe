@@ -48,7 +48,7 @@ export class Database {
       });
 
       mongoose.connection.on('disconnected', () => {
-        console.warn(`⚠️ MongoDB disconnected event at ${new Date().toISOString()}. Attempting to reconnect...`);
+        console.warn(`⚠️ MongoDB disconnected event at ${new Date().toISOString()}. Mongoose may attempt auto-reconnect.`);
         this.isConnected = false;
         this.reconnect();
       });
@@ -56,6 +56,11 @@ export class Database {
       mongoose.connection.on('reconnected', () => {
         console.log(`✅ MongoDB reconnected successfully at ${new Date().toISOString()}`);
         this.isConnected = true;
+      });
+
+      mongoose.connection.on('close', () => {
+        console.log(`🚪 MongoDB connection closed at ${new Date().toISOString()}`);
+        this.isConnected = false;
       });
 
     } catch (error) {

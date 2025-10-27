@@ -422,32 +422,44 @@ export class GameManager {
    * Removes games that have been inactive for > 1 hour
    */
   public cleanupAbandonedGames(): void {
+    console.log(`🧹 [${new Date().toISOString()}] Starting cleanupAbandonedGames execution.`);
+    const startTime = Date.now();
+
     const now = Date.now();
     const ONE_HOUR = 60 * 60 * 1000;
     let cleanedCount = 0;
 
-    this.activeGames.forEach((game, gameId) => {
-      const lastActivity = game.lastMoveAt.getTime();
-      const timeSinceActivity = now - lastActivity;
+    try {
+      this.activeGames.forEach((game, gameId) => {
+        const lastActivity = game.lastMoveAt.getTime();
+        const timeSinceActivity = now - lastActivity;
 
-      if (timeSinceActivity > ONE_HOUR) {
-        console.log(`🧹 Cleaning up abandoned game: ${gameId} (inactive for ${Math.round(timeSinceActivity / 60000)} minutes)`);
-        
-        // Mark as abandoned
-        game.status = 'abandoned';
-        
-        // Persist to database (async, fire and forget)
-        this.endGame(gameId).catch(err => {
-          console.error(`Failed to persist abandoned game ${gameId}:`, err);
-        });
-        
-        cleanedCount++;
+        if (timeSinceActivity > ONE_HOUR) {
+          console.log(`🧹 Cleaning up abandoned game: ${gameId} (inactive for ${Math.round(timeSinceActivity / 60000)} minutes)`);
+          
+          // Mark as abandoned
+          game.status = 'abandoned';
+          
+          // Persist to database (async, fire and forget with error logging)
+          this.endGame(gameId).catch(err => {
+            console.error(`❌ Error persisting abandoned game ${gameId} during cleanup:`, err);
+          });
+          
+          cleanedCount++;
+        }
+      });
+
+      if (cleanedCount > 0) {
+        console.log(`🧹 Cleaned up ${cleanedCount} abandoned game(s)`);
+      } else {
+        console.log(`🧹 No abandoned games to clean up. Active games: ${this.activeGames.size}`);
       }
-    });
-
-    if (cleanedCount > 0) {
-      console.log(`🧹 Cleaned up ${cleanedCount} abandoned game(s)`);
+    } catch (error) {
+      console.error('❌ Unexpected error during cleanupAbandonedGames iteration:', error);
     }
+
+    const duration = Date.now() - startTime;
+    console.log(`🧹 [${new Date().toISOString()}] Finished cleanupAbandonedGames execution in ${duration}ms.`);
   }
 
   /**
