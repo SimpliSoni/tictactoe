@@ -34,6 +34,9 @@ export const GameScreen = ({ navigation }: any) => {
   }
 
   useEffect(() => {
+    // ✅ FIX #1: Prevent navigation back to GameScreen after game ends
+    // Using replace() ensures screen can't be accessed via back button
+    
     // Navigate back if no game
     if (!currentGame) {
       console.log('🎮 GameScreen - No currentGame, navigating to Home');
@@ -60,6 +63,8 @@ export const GameScreen = ({ navigation }: any) => {
             onPress: () => {
               console.log('🎮 GameScreen - Alert dismissed, calling leaveGame()');
               leaveGame(); // Clean up game context state
+              
+              // ✅ Use replace() to clear back stack and prevent returning to GameScreen
               navigation.replace('Home');
             }
           }]
@@ -87,6 +92,7 @@ export const GameScreen = ({ navigation }: any) => {
           style: 'destructive',
           onPress: () => {
             forfeit();
+            // ✅ Use replace() to prevent back navigation to game screen
             navigation.replace('Home');
           }
         }

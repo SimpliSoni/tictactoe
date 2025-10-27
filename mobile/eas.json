@@ -7,15 +7,34 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "development"
+      "channel": "development",
+      "ios": {
+        "node": "18.17.0"
+      },
+      "android": {
+        "node": "18.17.0"
+      }
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://tictactoe-production-768b.up.railway.app"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://tictactoe-production-768b.up.railway.app"
+      },
+      "ios": {
+        "node": "18.17.0"
+      },
+      "android": {
+        "node": "18.17.0",
+        "gradleCommand": ":app:bundleRelease"
+      }
     }
   },
   "submit": {

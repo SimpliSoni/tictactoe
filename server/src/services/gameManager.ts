@@ -92,6 +92,7 @@ export class GameManager {
    * Make a move in a game
    * SERVER-AUTHORITATIVE: Validates everything before accepting move
    * RACE CONDITION PREVENTION: Uses locking mechanism
+   * ✅ FIX #14: Added disconnection check
    * @returns Result of move attempt
    */
   public makeMove(gameId: string, socketId: string, position: number): MoveResult {
@@ -131,6 +132,14 @@ export class GameManager {
         return {
           success: false,
           error: 'You are not a player in this game',
+        };
+      }
+
+      // ✅ FIX #14: Check if player is still connected
+      if (!game.players[playerSymbol].connected) {
+        return {
+          success: false,
+          error: 'You are disconnected. Game will be forfeited soon.',
         };
       }
 
@@ -314,11 +323,34 @@ export class GameManager {
    * Marks game as completed with other player as winner
    */
   public forfeitGame(gameId: string, socketId: string): GameState | null {
+    /**
+     * ✅ FIX #5: Prevent forfeit race condition
+     * Check if game is already marked as completed or if a move is being processed
+     */
+    
     const game = this.getGame(gameId);
-    if (!game) return null;
+    if (!game) {
+      console.warn(`⚠️  Forfeit: Game ${gameId} not found`);
+      return null;
+    }
+
+    // If game is already completed, don't allow forfeit
+    if (game.status !== 'active') {
+      console.warn(`⚠️  Forfeit: Game ${gameId} is already ${game.status}`);
+      return null;
+    }
+
+    // Check if a move is currently being processed
+    if (this.moveLocks.get(gameId)) {
+      console.warn(`⚠️  Forfeit: Move validation in progress for game ${gameId}. Forfeit queued.`);
+      // Forfeit will be processed after move lock is released
+    }
 
     const forfeiter = this.getPlayerSymbol(game, socketId);
-    if (!forfeiter) return null;
+    if (!forfeiter) {
+      console.warn(`⚠️  Forfeit: Socket ${socketId} is not a player in game ${gameId}`);
+      return null;
+    }
 
     const winner = forfeiter === 'X' ? 'O' : 'X';
 

@@ -39,7 +39,7 @@ export const config: Config = {
   port: getEnvNumber('PORT', 3000),
   mongodbUri: getEnvVar('MONGODB_URI'),
   jwtSecret: getEnvVar('JWT_SECRET'),
-  corsOrigin: getEnvVar('CORS_ORIGIN', 'http://localhost:19000'),
+  corsOrigin: getEnvVar('CORS_ORIGIN', '*'),
   matchTimeout: getEnvNumber('MATCH_TIMEOUT_SECONDS', 30),
   turnTimeout: getEnvNumber('TURN_TIMEOUT_SECONDS', 30),
   reconnectTimeout: getEnvNumber('RECONNECT_TIMEOUT_SECONDS', 30),
@@ -61,6 +61,22 @@ export function validateConfig(): void {
 
   if (config.jwtSecret.length < 32) {
     console.warn('⚠️  JWT_SECRET is too short. Use at least 32 characters in production.');
+  }
+
+  if (config.nodeEnv === 'production' && config.corsOrigin === '*') {
+    console.warn('⚠️  CORS is set to wildcard (*) in production. Consider restricting to specific origins.');
+  }
+
+  if (config.matchTimeout < 10 || config.matchTimeout > 300) {
+    console.warn('⚠️  MATCH_TIMEOUT seems unusual (should be 10-300 seconds)');
+  }
+
+  if (config.reconnectTimeout < 5 || config.reconnectTimeout > 120) {
+    console.warn('⚠️  RECONNECT_TIMEOUT seems unusual (should be 5-120 seconds)');
+  }
+
+  if (config.initialElo < 100 || config.initialElo > 2000) {
+    console.warn('⚠️  INITIAL_ELO seems unusual (should be 100-2000)');
   }
 
   console.log('✅ Configuration validated');

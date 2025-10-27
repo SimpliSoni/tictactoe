@@ -62,6 +62,7 @@ router.get('/health', async (_req: Request, res: Response): Promise<void> => {
 
 /**
  * Get top players leaderboard
+ * ✅ FIX #12: Added null safety and error validation
  */
 router.get('/leaderboard', async (_req: Request, res: Response): Promise<void> => {
   try {
@@ -76,22 +77,34 @@ router.get('/leaderboard', async (_req: Request, res: Response): Promise<void> =
 
     const topPlayers = await leaderboardService.getTopPlayers(limitResult.value);
 
+    // ✅ FIX #12: Validate result is array and not null
+    if (!Array.isArray(topPlayers)) {
+      console.error('❌ Leaderboard service returned non-array:', typeof topPlayers);
+      res.status(500).json({
+        success: false,
+        error: 'Invalid leaderboard data format',
+      });
+      return;
+    }
+
     res.json({
       success: true,
       count: topPlayers.length,
-      data: topPlayers,
+      data: topPlayers || [],
     });
   } catch (error) {
     console.error('❌ Leaderboard error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch leaderboard',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
 
 /**
  * Get user stats
+ * ✅ FIX #13: Added null safety check for rank
  */
 router.get('/stats/:userId', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -115,7 +128,14 @@ router.get('/stats/:userId', async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const rank = await leaderboardService.getUserRank(userId);
+    // ✅ FIX #13: Handle potential null/undefined rank
+    let rank = 0;
+    try {
+      rank = await leaderboardService.getUserRank(userId);
+    } catch (rankError) {
+      console.warn(`⚠️  Could not fetch rank for user ${userId}:`, rankError);
+      rank = -1; // Indicate rank unknown
+    }
 
     res.json({
       success: true,
@@ -123,7 +143,7 @@ router.get('/stats/:userId', async (req: Request, res: Response): Promise<void> 
         id: user._id,
         username: user.username,
         elo: user.elo,
-        rank,
+        rank: rank >= 0 ? rank : null,
         stats: user.stats,
         createdAt: user.createdAt,
       },

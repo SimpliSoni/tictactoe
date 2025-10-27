@@ -1,6 +1,13 @@
 /**
  * Application configuration
  * 
+ * ✅ FIX #4: Production Environment Configuration
+ * Separate dev/prod API URLs to prevent hardcoding
+ * 
+ * Environment Variables:
+ * - __DEV__: Automatically set by React Native (true in dev, false in production)
+ * - API_URL: Can be set via EAS secrets or environment variables
+ * 
  * IMPORTANT: Update SERVER_URL based on your environment
  * 
  * For local testing with Expo Go:
@@ -14,11 +21,48 @@
  * - Use your deployed server URL (e.g., https://your-app.up.railway.app)
  */
 
+import { Platform } from 'react-native';
+
+const isDev = __DEV__;
+
+// Environment-aware configuration
+const DEV_CONFIG = {
+  SERVER_URL: 'http://localhost:3000', // For local testing with emulator
+};
+
+const PROD_CONFIG = {
+  SERVER_URL: 'https://tictactoe-production-768b.up.railway.app',
+};
+
+// Fallback URLs if environment variables not set
+const FALLBACK_CONFIG = isDev ? DEV_CONFIG : PROD_CONFIG;
+
+/**
+ * Get server URL from:
+ * 1. Environment variable (EAS secrets)
+ * 2. Fallback configuration
+ */
+const getServerUrl = (): string => {
+  // Try to get from environment first (set via EAS secrets or env vars)
+  const envUrl = process.env.API_URL || process.env.EXPO_PUBLIC_API_URL;
+  
+  if (envUrl) {
+    console.log(`📡 Using environment API URL: ${envUrl}`);
+    return envUrl;
+  }
+
+  const url = isDev ? DEV_CONFIG.SERVER_URL : PROD_CONFIG.SERVER_URL;
+  console.log(`📡 Using fallback ${isDev ? 'development' : 'production'} API URL: ${url}`);
+  return url;
+};
+
 const Config = {
-  // Server URL - CHANGE THIS FOR TESTING ON REAL DEVICE
-  SERVER_URL: __DEV__ 
-    ? 'http://10.113.140.174:3000'  // Your actual network IP address
-    : 'https://tictactoe-production-768b.up.railway.app', // Production URL
+  // ✅ FIX #4: Environment-aware server URL
+  SERVER_URL: getServerUrl(),
+  
+  // Build environment info for debugging
+  BUILD_ENV: isDev ? 'development' : 'production',
+  PLATFORM: Platform.OS,
   
   // API endpoints
   API: {

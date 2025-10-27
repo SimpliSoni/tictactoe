@@ -30,6 +30,7 @@ const LeaderboardSchema = new Schema<ILeaderboard>({
     type: Number,
     required: true,
     index: true,
+    min: 0, // Ensure ELO cannot be negative
   },
   rank: {
     type: Number,

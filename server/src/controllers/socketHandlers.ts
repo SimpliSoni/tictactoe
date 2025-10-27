@@ -50,6 +50,12 @@ export class SocketHandlers {
         return;
       }
 
+      // Validate device ID format (alphanumeric, min 8 chars)
+      if (!/^[a-zA-Z0-9-_]{8,}$/.test(deviceId)) {
+        socket.emit('error', { message: 'Invalid device ID format' });
+        return;
+      }
+
       // Validate username if provided
       if (username) {
         // Trim whitespace
@@ -234,6 +240,12 @@ export class SocketHandlers {
         return;
       }
 
+      // Verify game is still active
+      if (game.status !== 'active') {
+        socket.emit('error', { message: 'Game is not active' });
+        return;
+      }
+
       // Validate position
       const position = data.position;
       if (!Number.isInteger(position) || position < 0 || position > 8) {
@@ -259,6 +271,10 @@ export class SocketHandlers {
 
       if (!opponentSocket) {
         console.warn(`⚠️  Opponent socket not found: ${opponentSocketId}`);
+        // Game might have ended due to disconnect, check status
+        if (updatedGame.status === 'active') {
+          socket.emit('error', { message: 'Opponent disconnected' });
+        }
         return;
       }
 
@@ -319,10 +335,16 @@ export class SocketHandlers {
         O: 0,
       };
 
-      // ⚠️ IMPORTANT: ELO is NOT updated for forfeits/disconnects
+      // ⚠️ DESIGN CHOICE: ELO is NOT updated for forfeits/disconnects
       // This prevents ELO manipulation through intentional disconnections
       // Stats (wins/losses) are still updated, but ELO remains unchanged
-      // To change this behavior, remove the isForfeit check below
+      // 
+      // ✅ BENEFITS:
+      // - Prevents abuse (disconnect to avoid ELO loss)
+      // - Fair to players with network issues
+      // - ELO reflects skill, not connection quality
+      // 
+      // ⚠️ TO ENABLE ELO ON FORFEIT: Remove the `if (!isForfeit)` check
       if (!isForfeit) {
         if (winner === 'X') {
           const { winnerEloChange, loserEloChange } = await leaderboardService.calculateELO(playerXId, playerOId, false);
@@ -338,7 +360,7 @@ export class SocketHandlers {
           eloChanges.O = loserEloChange;
         }
       } else {
-        console.log(`⚠️  ELO not updated for forfeit/disconnect in game ${game.gameId}`);
+        console.log(`ℹ️  ELO not updated for forfeit/disconnect in game ${game.gameId} (by design)`);
       }
 
       const [updatedXUser, updatedOUser] = await Promise.all([
@@ -381,6 +403,7 @@ export class SocketHandlers {
 
   /**
    * Handle leave game
+   * ✅ FIX #5: Safely handles race condition with move validation
    */
   private static async handleLeaveGame(
     socket: Socket<ClientToServerEvents, ServerToClientEvents>,
@@ -389,6 +412,13 @@ export class SocketHandlers {
     try {
       const game = gameManager.getGameBySocket(socket.id);
       if (!game) {
+        console.warn(`⚠️  Leave: No active game for socket ${socket.id}`);
+        return;
+      }
+
+      // Verify game is still active before forfeiting
+      if (game.status !== 'active') {
+        console.warn(`⚠️  Leave: Game ${game.gameId} is already ${game.status}`);
         return;
       }
 
@@ -397,6 +427,7 @@ export class SocketHandlers {
         : null;
 
       if (!forfeitingPlayer) {
+        console.warn(`⚠️  Leave: Socket ${socket.id} not found in game ${game.gameId}`);
         return;
       }
 
@@ -405,6 +436,8 @@ export class SocketHandlers {
 
       if (forfeitedGame) {
         await this.handleGameOver(socket, io, forfeitedGame, winner, { isForfeit: true });
+      } else {
+        console.error(`❌ Failed to forfeit game ${game.gameId}`);
       }
     } catch (error) {
       console.error('❌ Leave game error:', error);
@@ -413,6 +446,7 @@ export class SocketHandlers {
 
   /**
    * Handle forfeit
+   * ✅ FIX #5: Safely handles race condition with move validation
    */
   private static async handleForfeit(
     socket: Socket<ClientToServerEvents, ServerToClientEvents>,
@@ -421,15 +455,37 @@ export class SocketHandlers {
     try {
       const game = gameManager.getGameBySocket(socket.id);
       if (!game) {
+        console.warn(`⚠️  Forfeit: No active game for socket ${socket.id}`);
         socket.emit('error', { message: 'No active game' });
         return;
       }
 
-      const forfeitingPlayer = game.players.X.socketId === socket.id ? 'X' : 'O';
-      const winner = forfeitingPlayer === 'X' ? 'O' : 'X';
+      // Verify game is still active
+      if (game.status !== 'active') {
+        console.warn(`⚠️  Forfeit: Game ${game.gameId} is already ${game.status}`);
+        socket.emit('error', { message: 'Game is already completed' });
+        return;
+      }
 
-      gameManager.forfeitGame(game.gameId, socket.id);
-      await this.handleGameOver(socket, io, game, winner, { isForfeit: true });
+      const forfeitingPlayer = game.players.X.socketId === socket.id ? 'X'
+        : game.players.O.socketId === socket.id ? 'O'
+        : null;
+
+      if (!forfeitingPlayer) {
+        console.warn(`⚠️  Forfeit: Socket ${socket.id} not found in game ${game.gameId}`);
+        socket.emit('error', { message: 'You are not a player in this game' });
+        return;
+      }
+
+      const winner = forfeitingPlayer === 'X' ? 'O' : 'X';
+      const forfeitedGame = gameManager.forfeitGame(game.gameId, socket.id);
+
+      if (forfeitedGame) {
+        await this.handleGameOver(socket, io, forfeitedGame, winner, { isForfeit: true });
+      } else {
+        console.error(`❌ Failed to forfeit game ${game.gameId}`);
+        socket.emit('error', { message: 'Failed to forfeit game' });
+      }
     } catch (error) {
       console.error('❌ Forfeit error:', error);
       socket.emit('error', { message: 'Forfeit failed' });
@@ -439,6 +495,7 @@ export class SocketHandlers {
   /**
    * Handle disconnect
    * Start timeout for reconnection
+   * ✅ FIX #11: Added comprehensive error handling for edge cases
    */
   private static handleDisconnect(
     socket: Socket<ClientToServerEvents, ServerToClientEvents>,
@@ -448,18 +505,33 @@ export class SocketHandlers {
       console.log(`❌ Socket disconnected: ${socket.id}`);
 
       // Remove from queue if present
-      matchmakingService.removePlayerFromQueue(socket.id);
+      const removedFromQueue = matchmakingService.removePlayerFromQueue(socket.id);
+      if (removedFromQueue) {
+        console.log(`✅ Player ${socket.id} removed from queue on disconnect`);
+      }
 
       // Handle game disconnect
       const result = gameManager.handleDisconnect(
         socket.id,
         config.reconnectTimeout,
         (gameState, forfeitingSocketId) => {
+          // ✅ FIX #11: Defensive null/undefined checks
+          if (!gameState || !forfeitingSocketId) {
+            console.error('❌ Forfeit callback: gameState or forfeitingSocketId is null');
+            return;
+          }
+
+          if (!gameState.players?.X || !gameState.players?.O) {
+            console.error('❌ Forfeit callback: Game players are missing');
+            return;
+          }
+
           const forfeitingPlayer = gameState.players.X.socketId === forfeitingSocketId ? 'X'
             : gameState.players.O.socketId === forfeitingSocketId ? 'O'
             : null;
 
           if (!forfeitingPlayer) {
+            console.error(`❌ Forfeit: Socket ${forfeitingSocketId} not found in game ${gameState.gameId}`);
             return;
           }
 
@@ -470,23 +542,35 @@ export class SocketHandlers {
             this.handleGameOver(socket, io, forfeitedGame, winner, { isForfeit: true }).catch((error) => {
               console.error('❌ Auto-forfeit handling error:', error);
             });
+          } else {
+            console.error(`❌ Failed to forfeit game ${gameState.gameId} for socket ${forfeitingSocketId}`);
           }
         }
       );
 
       if (result) {
         const game = gameManager.getGame(result.gameId);
-        if (game) {
+        if (game && game.players?.X && game.players?.O) {
+          // ✅ FIX #11: Check opponent socket before emitting
           const opponent = game.players.X.socketId === socket.id
             ? game.players.O
             : game.players.X;
 
-          const opponentSocket = io.sockets.sockets.get(opponent.socketId);
-          if (opponentSocket) {
-            opponentSocket.emit('opponentDisconnected', {
-              timeoutSeconds: config.reconnectTimeout,
-            });
+          if (opponent && opponent.socketId) {
+            const opponentSocket = io.sockets.sockets.get(opponent.socketId);
+            if (opponentSocket?.connected) {
+              opponentSocket.emit('opponentDisconnected', {
+                timeoutSeconds: config.reconnectTimeout,
+              });
+              console.log(`✅ Sent opponentDisconnected to ${opponent.socketId}`);
+            } else {
+              console.warn(`⚠️  Opponent socket not found or not connected: ${opponent.socketId}`);
+            }
+          } else {
+            console.error('❌ Opponent is null or missing socketId');
           }
+        } else {
+          console.warn(`⚠️  Game ${result.gameId} not found after disconnect or missing players`);
         }
       }
     } catch (error) {

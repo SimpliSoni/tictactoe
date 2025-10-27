@@ -26,15 +26,25 @@ class TicTacToeServer {
   constructor() {
     this.app = express();
     this.httpServer = createServer(this.app);
+    
+    // Parse CORS origins - handle wildcard or comma-separated list
+    const corsOrigins = config.corsOrigin === '*' 
+      ? '*'
+      : config.corsOrigin.split(',').map(origin => origin.trim()).filter(Boolean);
+    
+    console.log('🌐 CORS Origins configured:', corsOrigins);
+    
     this.io = new SocketIOServer(this.httpServer, {
       cors: {
-        origin: config.corsOrigin,
+        origin: corsOrigins,
         methods: ['GET', 'POST'],
         credentials: true,
       },
       transports: ['websocket', 'polling'],
       pingInterval: 25000,
       pingTimeout: 60000,
+      maxHttpBufferSize: 1e6, // 1MB max message size
+      allowEIO3: true, // Support older socket.io clients
     });
   }
 
@@ -43,14 +53,33 @@ class TicTacToeServer {
    */
   private setupMiddleware(): void {
     // Security
-    this.app.use(helmet());
+    this.app.use(helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }));
 
     // Compression
     this.app.use(compression());
 
     // CORS
+    const corsOrigins = config.corsOrigin === '*' 
+      ? '*'
+      : config.corsOrigin.split(',').map(origin => origin.trim()).filter(Boolean);
+
     this.app.use(cors({
-      origin: config.corsOrigin,
+      origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, Postman, etc.)
+        if (!origin) return callback(null, true);
+        
+        if (corsOrigins === '*') {
+          return callback(null, true);
+        }
+        
+        if (Array.isArray(corsOrigins) && corsOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        
+        callback(new Error('Not allowed by CORS'));
+      },
       credentials: true,
     }));
 

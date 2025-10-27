@@ -93,6 +93,18 @@ export class LeaderboardService {
       console.log(`📈 ELO updated - ${winner.username}: ${winnerElo} → ${winner.elo} (${winnerEloChange > 0 ? '+' : ''}${winnerEloChange})`);
       console.log(`📉 ELO updated - ${loser.username}: ${loserElo} → ${loser.elo} (${loserEloChange > 0 ? '+' : ''}${loserEloChange})`);
 
+      // Update leaderboard entries to keep cache in sync
+      try {
+        await Promise.all([
+          this.updateLeaderboardEntry(String(winner._id)),
+          this.updateLeaderboardEntry(String(loser._id)),
+        ]);
+        console.log(`✅ Leaderboard entries updated for both players after ELO change`);
+      } catch (leaderboardError) {
+        console.error(`⚠️  Leaderboard update had issues (but game data is saved):`, leaderboardError);
+        // Continue anyway - leaderboard is just a cache
+      }
+
       return { winnerEloChange, loserEloChange };
     } catch (error) {
       console.error('❌ Error calculating ELO:', error);
@@ -142,6 +154,44 @@ export class LeaderboardService {
     } catch (error) {
       console.error(`❌ Error getting rank for user ${userId}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Update leaderboard entry for a single player
+   * Called after ELO changes to keep denormalized cache in sync
+   * @param userId - Player ID
+   */
+  public async updateLeaderboardEntry(userId: string): Promise<void> {
+    try {
+      const user = await User.findById(userId);
+      if (!user) {
+        console.warn(`⚠️  User ${userId} not found for leaderboard update`);
+        return;
+      }
+
+      // Get user's new rank based on their current ELO
+      const rank = await User.countDocuments({ elo: { $gt: user.elo } });
+      const finalRank = rank + 1;
+
+      // Update or create leaderboard entry
+      await Leaderboard.findOneAndUpdate(
+        { userId: userId.toString() },
+        {
+          userId: userId.toString(),
+          username: user.username,
+          elo: user.elo,
+          rank: finalRank,
+          stats: user.stats,
+          lastActive: user.lastActive,
+          updatedAt: new Date(),
+        },
+        { upsert: true, new: true }
+      );
+    } catch (error) {
+      console.error(`❌ Error updating leaderboard entry for user ${userId}:`, error);
+      // Don't throw - this shouldn't block the game completion
+      // Log it but continue
     }
   }
 

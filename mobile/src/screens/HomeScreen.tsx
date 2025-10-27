@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGame } from '../context/GameContext';
+import { useNetwork } from '../context/NetworkContext';
 import Config from '../config/config';
 
 export const HomeScreen = ({ navigation }: any) => {
@@ -21,12 +22,24 @@ export const HomeScreen = ({ navigation }: any) => {
     clearError 
   } = useGame();
 
+  // ✅ FIX #2: Added network status hook
+  const { isConnected: isNetworkConnected, isInternetReachable } = useNetwork();
+  const hasTriedConnectRef = React.useRef(false);
+
   useEffect(() => {
-    // Auto-connect when screen loads
-    if (!isConnected) {
+    // Auto-connect only once when screen loads
+    if (!isConnected && !hasTriedConnectRef.current) {
+      hasTriedConnectRef.current = true;
       connect();
     }
-  }, []);
+  }, []); // Empty deps - only run once
+
+  // Reset connection attempt flag when connected
+  useEffect(() => {
+    if (isConnected) {
+      hasTriedConnectRef.current = false;
+    }
+  }, [isConnected]);
 
   useEffect(() => {
     // Show errors
@@ -115,8 +128,19 @@ export const HomeScreen = ({ navigation }: any) => {
 
         <View style={styles.footer}>
           <View style={styles.statusIndicator}>
-            <View style={[styles.dot, styles.connectedDot]} />
-            <Text style={styles.statusText}>Connected</Text>
+            <View style={[
+              styles.dot, 
+              isConnected && isNetworkConnected ? styles.connectedDot : styles.disconnectedDot
+            ]} />
+            <Text style={styles.statusText}>
+              {!isNetworkConnected 
+                ? '📡 No Network'
+                : isInternetReachable === false
+                ? '⚠️ No Internet'
+                : isConnected
+                ? 'Connected'
+                : 'Connecting...'}
+            </Text>
           </View>
         </View>
       </View>
@@ -227,6 +251,9 @@ const styles = StyleSheet.create({
   },
   connectedDot: {
     backgroundColor: Config.COLORS.secondary,
+  },
+  disconnectedDot: {
+    backgroundColor: Config.COLORS.danger,
   },
   statusText: {
     fontSize: 14,

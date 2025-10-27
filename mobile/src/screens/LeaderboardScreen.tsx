@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -8,6 +8,7 @@ import {
   TouchableOpacity
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import Config from '../config/config';
 import { LeaderboardEntry } from '../types/game';
 
@@ -16,11 +17,8 @@ export const LeaderboardScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchLeaderboard();
-  }, []);
-
-  const fetchLeaderboard = async () => {
+  // Define fetchLeaderboard as a useCallback to memoize it
+  const fetchLeaderboard = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -39,7 +37,14 @@ export const LeaderboardScreen = ({ navigation }: any) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Fetch leaderboard when screen is focused (comes into view)
+  useFocusEffect(
+    useCallback(() => {
+      fetchLeaderboard();
+    }, [fetchLeaderboard])
+  );
 
   const renderItem = ({ item, index }: { item: LeaderboardEntry; index: number }) => {
     const rank = index + 1;

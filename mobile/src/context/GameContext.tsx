@@ -3,6 +3,7 @@ import { socketService } from '../services/socket';
 import { getDeviceId } from '../utils/device';
 import { GameState, UserProfile, UserStats, Board, PlayerSymbol } from '../types/game';
 import { Socket } from 'socket.io-client';
+import { useNetwork } from './NetworkContext';
 
 interface GameContextType {
   // Connection
@@ -66,6 +67,8 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const gameOverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeSocketRef = useRef<Socket | null>(null);
+  const isMountedRef = useRef(true);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setupSocketListeners = (socketInstance: Socket) => {
     if (activeSocketRef.current === socketInstance) {
@@ -81,6 +84,12 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       console.log('Connected to server');
       setIsConnected(true);
       
+      // Clear any pending reconnect timeout
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      
       // Auto-authenticate on connection
       try {
         const deviceId = await getDeviceId();
@@ -91,10 +100,15 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
       }
     });
 
-    socketInstance.on('disconnect', () => {
-      console.log('Disconnected from server');
+    socketInstance.on('disconnect', (reason: string) => {
+      console.log('Disconnected from server:', reason);
       setIsConnected(false);
       setIsAuthenticated(false);
+      
+      // Only show error for unexpected disconnects
+      if (reason !== 'io client disconnect') {
+        setError('Connection lost. Attempting to reconnect...');
+      }
     });
 
     socketInstance.on('connect_error', (err: Error) => {
@@ -172,7 +186,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     socketInstance.on('gameOver', (result: { winner: PlayerSymbol | 'draw'; stats: UserStats | null; eloChange: number; winningPattern: number[] | null }) => {
       console.log('🎮 GameContext - gameOver event received:', result.winner);
       console.log('🎮 GameContext - eloChange:', result.eloChange);
-      console.log('🎮 GameContext - stats:', result.stats);
       setIsOpponentDisconnected(false);
       
       // Use functional setState to avoid stale closure
@@ -183,7 +196,6 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
             console.warn('🎮 GameContext - Received gameOver but user is null');
             return prevUser;
           }
-          console.log('🎮 GameContext - Updating user ELO from', prevUser.elo, 'to', prevUser.elo + result.eloChange);
           return {
             ...prevUser,
             stats: result.stats!,
@@ -252,6 +264,22 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
   };
 
   const connect = useCallback(() => {
+    if (!isMountedRef.current) {
+      console.log('⚠️  Attempting to connect after unmount, skipping');
+      return;
+    }
+    
+    if (activeSocketRef.current?.connected) {
+      console.log('✅ Already connected, skipping');
+      return;
+    }
+
+    // Clear any pending operations
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
     const socketInstance = socketService.connect();
     setSocket(socketInstance);
     setupSocketListeners(socketInstance);
@@ -261,6 +289,11 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     if (gameOverTimeoutRef.current) {
       clearTimeout(gameOverTimeoutRef.current);
       gameOverTimeoutRef.current = null;
+    }
+
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
     }
 
     const socketToCleanup = activeSocketRef.current ?? socket;
@@ -281,6 +314,34 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setError(null);
     setSocket(null);
   }, [socket]);
+
+  /**
+   * ✅ FIX #6: Only cleanup on actual unmount, not on re-renders
+   * Prevents premature disconnection during navigation/re-renders
+   */
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    return () => {
+      console.log('🧹 GameContext ACTUALLY unmounting - cleaning up');
+      isMountedRef.current = false;
+      
+      // Cleanup all timeouts
+      if (gameOverTimeoutRef.current) {
+        clearTimeout(gameOverTimeoutRef.current);
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      
+      // Only cleanup listeners, don't disconnect socket
+      // Socket will cleanup itself on app close
+      if (activeSocketRef.current) {
+        cleanupSocketListeners(activeSocketRef.current);
+        activeSocketRef.current = null;
+      }
+    };
+  }, []);
 
   const setUsername = useCallback((username: string) => {
     // Use functional setState to avoid potential stale state
@@ -356,33 +417,29 @@ export const GameProvider: React.FC<GameProviderProps> = ({ children }) => {
     setError(null);
   }, []);
 
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  const isMyTurn = currentGame && mySymbol ? currentGame.currentTurn === mySymbol : false;
-
-  const value: GameContextType = {
-    isConnected,
-    isAuthenticated,
-    user,
-    currentGame,
-    mySymbol,
-    isMyTurn,
-    isInQueue,
-    queuePosition,
-    isOpponentDisconnected,
-    connect,
-    disconnect,
-    setUsername,
-    joinQueue,
-    leaveQueue,
-    makeMove,
-    leaveGame,
-    forfeit,
-    error,
-    clearError,
-  };
-
-  return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
+  return (
+    <GameContext.Provider value={{
+      isConnected,
+      isAuthenticated,
+      user,
+      currentGame,
+      mySymbol,
+      isMyTurn: isAuthenticated && currentGame ? currentGame.currentTurn === mySymbol : false,
+      isInQueue,
+      queuePosition,
+      isOpponentDisconnected,
+      connect,
+      disconnect,
+      setUsername,
+      joinQueue,
+      leaveQueue,
+      makeMove,
+      leaveGame,
+      forfeit,
+      error,
+      clearError: () => setError(null),
+    }}>
+      {children}
+    </GameContext.Provider>
+  );
 };
