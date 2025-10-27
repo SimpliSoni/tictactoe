@@ -49,7 +49,7 @@ export default {
     // Production builds - connects to production server
     production: {
       env: {
-        API_URL: 'https://tictactoe-production-768b.up.railway.app', // Production server
+        API_URL: 'https://tictactoe-production-dc7d.up.railway.app', // Production server
       },
     },
   },

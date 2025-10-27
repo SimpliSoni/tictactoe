@@ -99,14 +99,37 @@ class TicTacToeServer {
    * Setup routes
    */
   private setupRoutes(): void {
-    // Health check root
+    // Health check root - HTML response for browser visibility
     this.app.get('/', (_req, res) => {
-      res.status(200).set('Content-Type', 'application/json').json({
-        message: 'Multiplayer Tic-Tac-Toe Server',
-        version: '1.0.0',
-        status: 'running',
-        timestamp: new Date().toISOString(),
-      });
+      res.status(200).set('Content-Type', 'text/html').send(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tic-Tac-Toe Server</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+    h1 { color: #4CAF50; }
+    .status { background: #e8f5e9; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    .endpoint { background: #f5f5f5; padding: 10px; margin: 10px 0; border-left: 3px solid #2196F3; }
+  </style>
+</head>
+<body>
+  <h1>🎮 Multiplayer Tic-Tac-Toe Server</h1>
+  <div class="status">
+    <h2>✅ Server is Running</h2>
+    <p><strong>Version:</strong> 1.0.0</p>
+    <p><strong>Status:</strong> Online</p>
+  </div>
+  <h2>📡 Available Endpoints:</h2>
+  <div class="endpoint"><strong>GET /health</strong> - Health check endpoint</div>
+  <div class="endpoint"><strong>GET /api/health</strong> - API health check</div>
+  <div class="endpoint"><strong>GET /api/leaderboard</strong> - Global leaderboard</div>
+  <div class="endpoint"><strong>WebSocket</strong> - Real-time game connections via Socket.io</div>
+  <h2>🔗 Quick Test:</h2>
+  <p>Try: <a href="/health">/health</a> | <a href="/api/health">/api/health</a> | <a href="/api/leaderboard">/api/leaderboard</a></p>
+</body>
+</html>
+      `);
     });
 
     // Health check endpoint (for Railway/other orchestration)

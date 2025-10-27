@@ -2,8 +2,8 @@
 
 | 🌐 Backend | 📱 Mobile App | 💻 GitHub |
 |---|---|---|
-| https://tictactoe-production-768b.up.railway.app | exp://u.expo.dev/d3f8b9d5-d073-48ff-9d78-5222fc0e10dc | https://github.com/SimpliSoni/tictactoe |
-| [Health Check](https://tictactoe-production-768b.up.railway.app/api/health) | [Install Expo Go](https://expo.dev/client) | [View Repo](https://github.com/SimpliSoni/tictactoe) |
+| https://tictactoe-production-dc7d.up.railway.app | exp://u.expo.dev/d3f8b9d5-d073-48ff-9d78-5222fc0e10dc | https://github.com/SimpliSoni/tictactoe |
+| [Health Check](https://tictactoe-production-dc7d.up.railway.app/api/health) | [Install Expo Go](https://expo.dev/client) | [View Repo](https://github.com/SimpliSoni/tictactoe) |
 
 ### ⚡ Play Now (2 minutes)
 1. Install [Expo Go](https://expo.dev/client) on your phone
@@ -16,12 +16,12 @@ A real-time multiplayer Tic-Tac-Toe game with matchmaking, ELO rating system, an
 
 | Link | URL |
 |------|-----|
-| 🌐 **Live Backend API** | https://tictactoe-production-768b.up.railway.app |
+| 🌐 **Live Backend API** | https://tictactoe-production-dc7d.up.railway.app |
 | 📱 **Mobile App (Expo Go)** | `exp://exp.host/@simplisoni/tictactoe` |
 | 💻 **GitHub Repository** | https://github.com/SimpliSoni/tictactoe |
 | 📹 **Video Demo** | [Coming Soon - EAS Update in progress] |
-| 🏆 **Leaderboard API** | https://tictactoe-production-768b.up.railway.app/api/leaderboard |
-| ❤️ **Health Check** | https://tictactoe-production-768b.up.railway.app/api/health |
+| 🏆 **Leaderboard API** | https://tictactoe-production-dc7d.up.railway.app/api/leaderboard |
+| ❤️ **Health Check** | https://tictactoe-production-dc7d.up.railway.app/api/health |
 
 **How to Test:**
 1. Install [Expo Go](https://expo.dev/client) on your phone

@@ -31,7 +31,7 @@ const DEV_CONFIG = {
 };
 
 const PROD_CONFIG = {
-  SERVER_URL: 'https://tictactoe-production-768b.up.railway.app',
+  SERVER_URL: 'https://tictactoe-production-dc7d.up.railway.app',
 };
 
 // Fallback URLs if environment variables not set

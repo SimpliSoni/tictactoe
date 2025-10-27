@@ -19,14 +19,14 @@
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://tictactoe-production-768b.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://tictactoe-production-dc7d.up.railway.app"
       }
     },
     "production": {
       "autoIncrement": true,
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://tictactoe-production-768b.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://tictactoe-production-dc7d.up.railway.app"
       },
       "ios": {
         "node": "18.17.0"
