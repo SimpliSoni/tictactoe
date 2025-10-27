@@ -161,11 +161,10 @@ class TicTacToeServer {
 
     // Health check endpoint (for Railway/other orchestration)
     this.app.get('/health', (_req, res) => {
-      console.log(`🩺 Health check endpoint hit at ${new Date().toISOString()}`);
-      res.status(200).set('Content-Type', 'application/json').json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-      });
+      // 🩺 Minimal health check for Railway diagnosis
+      console.log(`🩺 Minimal /health check hit at ${new Date().toISOString()}`);
+      // Send minimal successful response immediately
+      res.status(200).json({ status: 'ok-simple' });
     });
 
     // API routes
