@@ -1,248 +1,105 @@
-# 🎮## 🚀 LIVE DEPLOYMENT - TRY NOW
+# Multiplayer Tic-Tac-Toe
 
-| 🌐 Backend | 📱 Mobile App | 💻 GitHub |
-|---|---|---|
-| https://tictactoe-production-dc7d.up.railway.app | exp://u.expo.dev/d3f8b9d5-d073-48ff-9d78-5222fc0e10dc | https://github.com/SimpliSoni/tictactoe |
-| [Health Check](https://tictactoe-production-dc7d.up.railway.app/api/health) | [Install Expo Go](https://expo.dev/client) | [View Repo](https://github.com/SimpliSoni/tictactoe) |
+Real-time multiplayer Tic-Tac-Toe with matchmaking, ELO ratings, and leaderboards. Built with React Native, Node.js, Socket.io, and MongoDB.
 
-### ⚡ Play Now (2 minutes)
-1. Install [Expo Go](https://expo.dev/client) on your phone
-2. Scan or open: `exp://u.expo.dev/d3f8b9d5-d073-48ff-9d78-5222fc0e10dc`
-3. Open on 2 devices → tap "Find Match" → Play!-Tac-Toe
+## Live Demo
 
-A real-time multiplayer Tic-Tac-Toe game with matchmaking, ELO rating system, and leaderboards. Built with React Native (Expo), Node.js, Socket.io, and MongoDB.
+Backend API: https://tictactoe-production-dc7d.up.railway.app
 
-## � Quick Links - Live Deployment
+Health Check: https://tictactoe-production-dc7d.up.railway.app/api/health
 
-| Link | URL |
-|------|-----|
-| 🌐 **Live Backend API** | https://tictactoe-production-dc7d.up.railway.app |
-| 📱 **Mobile App (Expo Go)** | `exp://exp.host/@simplisoni/tictactoe` |
-| 💻 **GitHub Repository** | https://github.com/SimpliSoni/tictactoe |
-| 📹 **Video Demo** | [Coming Soon - EAS Update in progress] |
-| 🏆 **Leaderboard API** | https://tictactoe-production-dc7d.up.railway.app/api/leaderboard |
-| ❤️ **Health Check** | https://tictactoe-production-dc7d.up.railway.app/api/health |
+Leaderboard: https://tictactoe-production-dc7d.up.railway.app/api/leaderboard
 
-**How to Test:**
-1. Install [Expo Go](https://expo.dev/client) on your phone
-2. Open Expo Go and search for `@simplisoni/tictactoe` OR scan the QR code
-3. Play with 2+ devices for real multiplayer action
-4. Check API endpoints using `curl` or Postman
+Mobile App: [Download Tictactoe](https://expo.dev/accounts/simplisoni/projects/mobile/builds/dcc63df9-8e7a-453d-93fa-5aef5465656c)
+
+GitHub: https://github.com/SimpliSoni/tictactoe
+
+Drive (APK and video demo) : https://drive.google.com/drive/folders/1rjv1D8-NmB6vddEhoSrXJb7hygIGQP3P?usp=drive_link 
+
+### Try It Now
+
+Download the app direclty at :
+https://expo.dev/accounts/simplisoni/projects/mobile/builds/dcc63df9-8e7a-453d-93fa-5aef5465656c
 
 ---
 
-- [Features](#-features)
-- [Architecture & Design Choices](#-architecture--design-choices)
-- [Tech Stack](#-tech-stack)
-- [Quick Start](#-quick-start)
-- [Project Structure](#-project-structure)
-- [Deployment](#-deployment)
-- [API Documentation](#-api-documentation)
+## Features
+
+### Gameplay
+- Real-time multiplayer with instant synchronization
+- Server-authoritative game logic prevents cheating
+- Automatic matchmaking based on skill ratings
+- Reconnection support with 30-second timeout
+- Auto-forfeit on prolonged disconnection
+
+### Player System
+- ELO rating system using chess-style calculations
+- Stats tracking: wins, losses, draws, streaks, win rate
+- Global leaderboard with rankings
+- Device-based authentication, no signup required
+
+### Technical
+- Race condition prevention with move locking
+- Production deployment on Railway with MongoDB Atlas
+- Cross-platform support for iOS and Android
+- Comprehensive error handling and recovery
 
 ---
 
-## ✨ Features
+## Tech Stack
 
-### Core Gameplay
-- ✅ **Real-time multiplayer** - Play against other players with instant synchronization
-- ✅ **Server-authoritative logic** - All game rules enforced server-side (no cheating possible)
-- ✅ **Automatic matchmaking** - Find opponents based on ELO ratings
-- ✅ **Reconnection handling** - Resume games after brief disconnections
-- ✅ **Forfeit detection** - Auto-forfeit after 30s of disconnection
+Backend:
+- Node.js with Express and TypeScript
+- Socket.io for real-time communication
+- MongoDB with Mongoose ODM
+- Deployed on Railway
 
-### Player Features
-- ✅ **ELO rating system** - Standard chess-style skill ratings
-- ✅ **Stats tracking** - Wins, losses, draws, win rate, streaks
-- ✅ **Global leaderboard** - See top players and your ranking
-- ✅ **Persistent accounts** - Device-based authentication (no signup needed)
+Mobile:
+- React Native with Expo and TypeScript
+- Socket.io-client
+- React Navigation
 
-### Technical Features
-- ✅ **Race condition prevention** - Move locking ensures fair gameplay
-- ✅ **Comprehensive error handling** - Graceful recovery from network issues
-- ✅ **Production-ready** - Deployed on Railway with MongoDB Atlas
-- ✅ **Cross-platform** - Works on iOS and Android via Expo Go
+Database:
+- MongoDB Atlas free tier
 
 ---
 
-## 🏗️ Architecture & Design Choices
-
-### Why We Built a Custom Server (Not Nakama)
-
-**The Challenge:** We initially considered Nakama, a popular open-source game server, but encountered critical deployment constraints.
-
-**Why Nakama Was Rejected:**
-1. **Resource Intensive** - Requires significant RAM (2GB+ minimum) and CPU
-2. **Free Tier Incompatibility** - Most free hosting services (Render, Railway free, Heroku free) cannot support Nakama's resource requirements
-3. **Complex Setup** - Requires Docker, extensive configuration, and Lua/TypeScript runtime modules
-4. **Overkill for Requirements** - We needed basic matchmaking and game logic, not MMO-scale features
-5. **Deployment Barrier** - Free trials require payment method verification for resources needed
-
-**Our Solution: Custom Lightweight Stack**
-- ✅ Runs comfortably on Railway's free tier (512MB RAM)
-- ✅ Simple deployment - just `git push`
-- ✅ Full control over game logic
-- ✅ Meets all assignment requirements perfectly
-- ✅ No payment method required for deployment
-
-### Why Railway Free Tier?
-
-We evaluated multiple hosting platforms:
-
-| Platform | Free Tier | Payment Required | Verdict |
-|----------|-----------|------------------|---------|
-| **Heroku** | Discontinued | Yes | ❌ No free tier anymore |
-| **Render** | 750hrs/month | No, but limited resources | ⚠️ Possible but restrictive |
-| **Fly.io** | Limited | Yes (credit card) | ❌ Payment barrier |
-| **Railway** | $5 credit/month | No (trial available) | ✅ **CHOSEN** |
-
-**Why Railway Won:**
-1. **No Payment Method Required** - True free trial, perfect for assignments
-2. **Generous Free Tier** - $5 credit = ~500 hours of small server runtime
-3. **GitHub Integration** - Auto-deploy on push
-4. **Monorepo Support** - Can deploy just the `server/` folder
-5. **Built-in Environment Variables** - Easy secrets management
-6. **WebSocket Support** - Critical for Socket.io real-time communication
-7. **MongoDB Compatible** - Works seamlessly with MongoDB Atlas free tier
-
-### Why MongoDB?
-
-**Technical Reasons:**
-1. **Familiarity** - Team has extensive experience with MongoDB
-2. **Horizontal Scaling** - Easy to scale with sharding if game grows
-3. **Schema Flexibility** - Game states and user stats can evolve without migrations
-4. **JSON-Native** - Perfect match for JavaScript/TypeScript stack
-5. **Free Tier Excellence** - MongoDB Atlas offers 512MB free storage (plenty for this game)
-
-**Alternatives Considered:**
-- **PostgreSQL** - Great but requires more rigid schemas and migrations
-- **Redis** - Perfect for caching but not ideal as primary database
-- **Firebase** - Too tightly coupled to Google Cloud Platform
-
-**Our Choice:** MongoDB Atlas + Railway = Perfect free-tier combo with familiar tools
-
-### Why Expo Go + React Native?
-
-**Mobile Framework Choice:**
-
-| Framework | Pros | Cons | Verdict |
-|-----------|------|------|---------|
-| **Flutter** | Fast, beautiful | Dart learning curve | ⚠️ |
-| **Native iOS/Android** | Best performance | 2x codebase | ❌ |
-| **React Native (bare)** | Full control | Complex setup | ⚠️ |
-| **Expo Go** | Instant testing, easy updates | Some limitations | ✅ **CHOSEN** |
-
-**Why Expo Go Won:**
-1. **Instant Testing** - Scan QR code, no build time
-2. **Live Reloads** - Changes appear instantly during development
-3. **EAS Updates** - Push updates without app store approval
-4. **Built-in Modules** - Camera, location, notifications all included
-5. **Cross-Platform** - Single codebase for iOS and Android
-6. **Easy Deployment** - EAS Build handles native builds
-7. **Perfect for Assignments** - Fast iteration, easy to demonstrate
-
-### Server Architecture Highlights
-
-**Server-Authoritative Design:**
-```
-Client Action → Socket.io → Server Validation → Game Logic → State Update → Broadcast
-```
-
-**Why Server-Authoritative?**
-- ❌ Clients cannot cheat by manipulating game state
-- ✅ Single source of truth (server)
-- ✅ Fair gameplay guaranteed
-- ✅ Easier to debug and test
-
-**Race Condition Prevention:**
-```typescript
-// GameManager uses locking mechanism
-private moveLocks: Map<string, boolean> = new Map();
-
-// Before processing move
-if (this.moveLocks.get(gameId)) {
-  return { success: false, error: 'Move in progress' };
-}
-this.moveLocks.set(gameId, true);
-
-// Process move...
-
-// Always release lock
-finally {
-  this.moveLocks.delete(gameId);
-}
-```
-
-**Matchmaking Algorithm:**
-1. Players join queue with their ELO rating
-2. Server pairs players with similar ELO (±200 range preferred)
-3. If no close match after 10s, widens ELO range
-4. After 30s, matches with anyone available
-5. Game starts immediately upon match
-
-**ELO Rating System:**
-- Standard chess ELO formula: `newELO = oldELO + K * (actualScore - expectedScore)`
-- K-factor: 32 (higher for faster rating changes in casual games)
-- Expected score: `1 / (1 + 10^((opponentElo - playerElo) / 400))`
-- Minimum ELO: 0 (can't go negative)
-- Initial ELO: 1000
-
----
-
-## 🛠️ Tech Stack
-
-### Backend
-- **Node.js** + **Express** - REST API and server foundation
-- **Socket.io** - Real-time WebSocket communication
-- **MongoDB** + **Mongoose** - Database and ODM
-- **TypeScript** - Type safety and better DX
-- **Railway** - Hosting and deployment
-
-### Frontend (Mobile)
-- **React Native** - Cross-platform mobile framework
-- **Expo** - Development platform and tooling
-- **TypeScript** - Type-safe React components
-- **Socket.io-client** - Real-time server connection
-- **React Navigation** - Screen navigation
-
-### DevOps
-- **EAS (Expo Application Services)** - Builds and OTA updates
-- **GitHub** - Version control and CI/CD
-- **MongoDB Atlas** - Managed database hosting
-
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
-- **Node.js** 18+ ([Download](https://nodejs.org/))
-- **MongoDB** (local or [Atlas free tier](https://www.mongodb.com/cloud/atlas/register))
-- **Expo Go** app on your phone ([iOS](https://apps.apple.com/app/expo-go/id982107779) | [Android](https://play.google.com/store/apps/details?id=host.exp.exponent))
+- Node.js 18 or higher
+- MongoDB local instance or Atlas account at https://www.mongodb.com/cloud/atlas/register
+- Expo Go app on mobile device from https://expo.dev/client
 
-### 1. Clone and Install
+### Installation
 
+Clone repository:
 ```bash
-# Clone repository
 git clone https://github.com/SimpliSoni/tictactoe.git
 cd tictactoe
+```
 
-# Install server dependencies
+Install server dependencies:
+```bash
 cd server
 npm install
+```
 
-# Install mobile dependencies
+Install mobile dependencies:
+```bash
 cd ../mobile
 npm install
 ```
 
-### 2. Configure Environment
+### Configuration
 
-**Server:** Create `server/.env`
+Create server/.env file:
 ```env
 NODE_ENV=development
 PORT=3000
 MONGODB_URI=mongodb://localhost:27017/tictactoe
-JWT_SECRET=your-super-secret-jwt-key-min-32-chars-long
+JWT_SECRET=your-secret-key-minimum-32-characters
 CORS_ORIGIN=*
 MATCH_TIMEOUT_SECONDS=30
 TURN_TIMEOUT_SECONDS=30
@@ -251,412 +108,246 @@ INITIAL_ELO=1000
 ELO_K_FACTOR=32
 ```
 
-**Mobile:** Update `mobile/src/config/config.ts`
+Update mobile/src/config/config.ts:
 ```typescript
 const DEV_CONFIG = {
-  SERVER_URL: 'http://192.168.1.10:3000', // Replace with YOUR computer's IP
+  SERVER_URL: 'http://YOUR_LOCAL_IP:3000',
 };
 ```
 
-> **Finding Your IP:**
-> - Windows: `ipconfig` (look for IPv4 Address)
-> - Mac/Linux: `ifconfig` or `ip addr`
+Find your local IP:
+- Windows: ipconfig (look for IPv4 Address)
+- Mac/Linux: ifconfig or ip addr
 
-### 3. Start MongoDB
+### Running Locally
 
-**Option A: Local MongoDB**
+Start MongoDB:
 ```bash
 mongod
 ```
 
-**Option B: MongoDB Atlas (Recommended)**
-1. Create free account at [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas/register)
-2. Create free cluster (M0)
-3. Add database user
-4. Whitelist IP: `0.0.0.0/0` (allow all for dev)
-5. Get connection string
-6. Update `MONGODB_URI` in `server/.env`
-
-### 4. Start the Server
-
+Start server:
 ```bash
 cd server
 npm run dev
 ```
 
-You should see:
-```
-✅ MongoDB connected successfully
-✅ Socket.io initialized
-╔════════════════════════════════════════╗
-║   🎮 Multiplayer Tic-Tac-Toe Server   ║
-╠════════════════════════════════════════╣
-║ ✅ Server running on port 3000          ║
-║ 📍 Environment: development            ║
-║ 🌐 CORS Origin: *                      ║
-╚════════════════════════════════════════╝
-```
-
-### 5. Start Mobile App
-
+Start mobile app:
 ```bash
 cd mobile
 npm start
 ```
 
-Scan the QR code with Expo Go app on your phone.
-
-> ⚠️ **Important:** Your phone must be on the same WiFi network as your computer!
-
-### 6. Test Multiplayer
-
-1. **Player 1:** Open app on device 1, tap "Find Match"
-2. **Player 2:** Open app on device 2, tap "Find Match"
-3. **Play:** You'll be matched! Take turns tapping cells
-4. **Win:** Game ends, ELO updates, stats recorded
+Scan QR code with Expo Go. Device must be on same WiFi network as computer.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 tictactoe/
-├── mobile/                    # React Native mobile app
+├── mobile/
 │   ├── src/
-│   │   ├── components/       # Reusable UI components
-│   │   │   ├── Board.tsx     # Tic-tac-toe game board
-│   │   │   └── ErrorBoundary.tsx
-│   │   ├── config/
-│   │   │   └── config.ts     # App configuration (API URLs, colors)
-│   │   ├── context/
-│   │   │   ├── GameContext.tsx     # Game state management
-│   │   │   └── NetworkContext.tsx  # Network status tracking
-│   │   ├── screens/
-│   │   │   ├── HomeScreen.tsx      # Main menu
-│   │   │   ├── MatchmakingScreen.tsx
-│   │   │   ├── GameScreen.tsx      # Active game
-│   │   │   ├── LeaderboardScreen.tsx
-│   │   │   └── StatsScreen.tsx
-│   │   ├── services/
-│   │   │   └── socket.ts     # Socket.io client wrapper
-│   │   ├── types/
-│   │   │   └── game.ts       # TypeScript type definitions
-│   │   └── utils/
-│   │       └── device.ts     # Device ID generation
-│   ├── App.tsx               # App entry point
-│   ├── app.json              # Expo configuration
-│   ├── eas.json              # EAS Build/Update config
-│   └── package.json
+│   │   ├── components/          Board, ErrorBoundary
+│   │   ├── config/              App configuration
+│   │   ├── context/             Game and Network state
+│   │   ├── screens/             Home, Game, Leaderboard, Stats
+│   │   ├── services/            Socket.io client
+│   │   ├── types/               TypeScript definitions
+│   │   └── utils/               Helper functions
+│   ├── App.tsx
+│   ├── app.json                 Expo configuration
+│   └── eas.json                 EAS Build configuration
 │
-├── server/                   # Node.js backend
+├── server/
 │   ├── src/
-│   │   ├── config/
-│   │   │   ├── database.ts   # MongoDB connection
-│   │   │   └── env.ts        # Environment variables
-│   │   ├── controllers/
-│   │   │   ├── apiRoutes.ts  # REST API endpoints
-│   │   │   └── socketHandlers.ts  # Socket.io events
-│   │   ├── models/
-│   │   │   ├── User.ts       # User schema
-│   │   │   ├── Game.ts       # Game schema
-│   │   │   └── Leaderboard.ts
-│   │   ├── services/
-│   │   │   ├── gameLogic.ts      # Core game rules
-│   │   │   ├── gameManager.ts    # Game state management
-│   │   │   ├── matchmaking.ts    # Player pairing
-│   │   │   └── leaderboard.ts    # ELO calculations
-│   │   ├── types/
-│   │   │   └── game.ts       # Shared type definitions
-│   │   └── index.ts          # Server entry point
-│   ├── tsconfig.json
-│   └── package.json
+│   │   ├── config/              Database and environment
+│   │   ├── controllers/         API routes and socket handlers
+│   │   ├── models/              MongoDB schemas
+│   │   ├── services/            Game logic, matchmaking, ELO
+│   │   ├── types/               Type definitions
+│   │   └── index.ts             Server entry point
+│   └── tsconfig.json
 │
-├── docs/                     # Documentation
-├── DEPLOYMENT_CHECKLIST.md   # Step-by-step deployment guide
-├── QUICKSTART.md             # Quick setup instructions
-└── README.md                 # This file
+└── docs/
 ```
 
 ---
 
-## 🚢 Deployment
+## Deployment
 
-### Backend Deployment (Railway)
+### Backend on Railway
 
-1. **Create Railway Account**
-   - Go to [railway.app](https://railway.app/)
-   - Sign up with GitHub (no payment method required for trial)
+1. Create account at https://railway.app 
+2. Create new project from GitHub repository
+3. Set root directory to "server" in project settings
+4. Add environment variables in Variables tab:
 
-2. **Create New Project**
-   - Click "New Project"
-   - Select "Deploy from GitHub repo"
-   - Choose your `tictactoe` repository
+```
+NODE_ENV=production
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/tictactoe
+JWT_SECRET=production-secret-key-min-32-chars
+CORS_ORIGIN=*
+MATCH_TIMEOUT_SECONDS=30
+TURN_TIMEOUT_SECONDS=30
+RECONNECT_TIMEOUT_SECONDS=30
+INITIAL_ELO=1000
+ELO_K_FACTOR=32
+```
 
-3. **Configure Root Directory**
-   - In project settings, set **Root Directory** to `server`
-   - This tells Railway to deploy only the server folder
+5. Railway auto-deploys on git push
+6. Verify with: curl https://your-app.up.railway.app/api/health
 
-4. **Set Environment Variables**
-   
-   Go to **Variables** tab and add:
-   ```
-   NODE_ENV=production
-   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/tictactoe?retryWrites=true&w=majority
-   JWT_SECRET=super-secret-production-key-min-32-chars-long
-   CORS_ORIGIN=*
-   MATCH_TIMEOUT_SECONDS=30
-   TURN_TIMEOUT_SECONDS=30
-   RECONNECT_TIMEOUT_SECONDS=30
-   INITIAL_ELO=1000
-   ELO_K_FACTOR=32
-   ```
+### Mobile on Expo
 
-   > ⚠️ **Important:** Use a production MongoDB Atlas connection string!
+Install EAS CLI:
+```bash
+npm install -g eas-cli
+```
 
-5. **Deploy**
-   - Railway auto-deploys on `git push`
-   - Get your deployment URL: `https://your-app.up.railway.app`
+Login to Expo:
+```bash
+eas login
+```
 
-6. **Verify Deployment**
-   ```bash
-   curl https://your-app.up.railway.app/api/health
-   ```
-   Should return:
-   ```json
-   {
-     "status": "ok",
-     "database": "connected",
-     "timestamp": "2025-10-27T12:00:00.000Z"
-   }
-   ```
+Update production URL in mobile/src/config/config.ts:
+```typescript
+const PROD_CONFIG = {
+  SERVER_URL: 'https://your-app.up.railway.app',
+};
+```
 
-### Mobile Deployment (Expo)
+Publish update:
+```bash
+cd mobile
+eas update --branch production --message "Production release"
+```
 
-1. **Install EAS CLI**
-   ```bash
-   npm install -g eas-cli
-   ```
-
-2. **Login to Expo**
-   ```bash
-   eas login
-   ```
-
-3. **Update Production URL**
-   
-   In `mobile/src/config/config.ts`:
-   ```typescript
-   const PROD_CONFIG = {
-     SERVER_URL: 'https://your-app.up.railway.app',
-   };
-   ```
-
-4. **Publish Update**
-   ```bash
-   cd mobile
-   eas update --branch production --message "Updated backend URL"
-   ```
-
-5. **Build for Stores (Optional)**
-   ```bash
-   # iOS
-   eas build --platform ios
-
-   # Android
-   eas build --platform android
-
-   # Both
-   eas build --platform all
-   ```
+Build for app stores (optional):
+```bash
+eas build --platform all
+```
 
 ---
 
-## 📡 API Documentation
+## API Documentation
 
 ### REST Endpoints
 
-#### Health Check
-```http
+Health Check:
+```
 GET /api/health
 ```
 
-Response:
-```json
-{
-  "status": "ok",
-  "database": "connected",
-  "timestamp": "2025-10-27T12:00:00.000Z"
-}
+Leaderboard:
 ```
-
-#### Get Leaderboard
-```http
 GET /api/leaderboard?limit=100
 ```
 
-Response:
-```json
-{
-  "leaderboard": [
-    {
-      "rank": 1,
-      "username": "Player123",
-      "elo": 1450,
-      "stats": {
-        "wins": 25,
-        "losses": 10,
-        "draws": 3,
-        "winRate": 65.79
-      }
-    }
-  ]
-}
+User Stats:
 ```
-
-#### Get User Stats
-```http
 GET /api/stats/:userId
-```
-
-Response:
-```json
-{
-  "user": {
-    "username": "Player123",
-    "elo": 1450,
-    "stats": {
-      "wins": 25,
-      "losses": 10,
-      "draws": 3,
-      "gamesPlayed": 38,
-      "winRate": 65.79,
-      "currentStreak": 5,
-      "longestStreak": 8
-    }
-  }
-}
 ```
 
 ### Socket.io Events
 
-#### Client → Server
+Client to Server:
+- auth: Authenticate with deviceId and optional username
+- joinQueue: Enter matchmaking queue
+- leaveQueue: Exit matchmaking queue
+- makeMove: Submit move (position 0-8)
+- forfeit: Surrender current game
+- leaveGame: Exit game session
 
-```typescript
-// Authenticate
-socket.emit('auth', {
-  deviceId: 'unique-device-id',
-  username?: 'OptionalUsername'
-});
+Server to Client:
+- authenticated: Authentication successful
+- queueJoined: Entered matchmaking
+- matchFound: Opponent found
+- gameStarted: Game session created
+- gameUpdate: Board state changed
+- gameOver: Game concluded
+- opponentDisconnected: Opponent lost connection
+- opponentReconnected: Opponent reconnected
+- error: Error occurred
 
-// Join matchmaking queue
-socket.emit('joinQueue');
+---
 
-// Leave matchmaking queue
-socket.emit('leaveQueue');
+## Architecture Decisions
 
-// Make a move (position 0-8)
-socket.emit('makeMove', { position: 4 });
+### Why Custom Server Instead of Nakama
 
-// Forfeit game
-socket.emit('forfeit');
+Nakama was evaluated but rejected:
+- Requires 2GB+ RAM minimum
+- Incompatible with free hosting tiers
+- Complex Docker-based setup
+- Overkill for project requirements
 
-// Leave game
-socket.emit('leaveGame');
+Custom solution runs on Railway free tier (512MB RAM) with full control.
+
+### Why Railway
+
+Railway free tier provides:
+- $5 monthly credit, no credit card required
+- Automatic GitHub deployment
+- Built-in WebSocket support
+- Simple environment variable management
+- Monorepo support for deploying server folder only
+
+
+### Why MongoDB
+
+Reasons for choosing MongoDB:
+- familiarity
+- Easy horizontal scaling with sharding
+
+### Why Expo
+
+Benefits of Expo:
+- Instant testing via QR code
+- Live reload during development
+- Over-the-air updates without app store approval
+- Built-in cross-platform modules
+- Single codebase for iOS and Android
+
+---
+
+## Architecture Highlights
+
+Server-Authoritative Design:
+```
+Client Request → Socket.io → Server Validation → Game Logic → State Update → Broadcast
 ```
 
-#### Server → Client
+All game rules enforced server-side to prevent cheating.
 
+Race Condition Prevention:
 ```typescript
-// Authentication successful
-socket.on('authenticated', (data) => {
-  // data: { userId, username, stats, elo }
-});
+private moveLocks: Map<string, boolean> = new Map();
 
-// Entered matchmaking queue
-socket.on('queueJoined', (data) => {
-  // data: { position, estimatedWaitTime }
-});
-
-// Match found
-socket.on('matchFound', (data) => {
-  // data: { opponent: { username, elo } }
-});
-
-// Game started
-socket.on('gameStarted', (gameState) => {
-  // gameState: { gameId, players, board, currentTurn, ... }
-});
-
-// Game state updated (after move)
-socket.on('gameUpdate', (gameState) => {
-  // Updated gameState
-});
-
-// Game ended
-socket.on('gameOver', (result) => {
-  // result: { winner, reason, eloChange, stats }
-});
-
-// Opponent disconnected
-socket.on('opponentDisconnected', (data) => {
-  // data: { timeoutSeconds: 30 }
-});
-
-// Opponent reconnected
-socket.on('opponentReconnected');
-
-// Error occurred
-socket.on('error', (error) => {
-  // error: { message: string }
-});
+if (this.moveLocks.get(gameId)) {
+  return { success: false, error: 'Move in progress' };
+}
+this.moveLocks.set(gameId, true);
+// Process move
+this.moveLocks.delete(gameId);
 ```
 
----
+Matchmaking Algorithm:
+1. Match players within ±200 ELO range
+2. Widen range after 10 seconds
+3. Match with anyone after 30 seconds
 
-## 🧪 Testing Guide
+ELO System:
+- Formula: newELO = oldELO + K × (actualScore - expectedScore)
+- K-factor: 32 for faster rating changes
+- Initial rating: 1000
+- Minimum rating: 0
 
-See [QUICKSTART.md](./QUICKSTART.md) for comprehensive local testing instructions.
 
-**Quick Test Checklist:**
-- [ ] Server connects to MongoDB
-- [ ] Mobile app connects to server
-- [ ] Two players can be matched
-- [ ] Game board updates in real-time
-- [ ] Win detection works correctly
-- [ ] Draw detection works correctly
-- [ ] ELO updates after game
-- [ ] Stats update correctly
-- [ ] Leaderboard displays rankings
-- [ ] Disconnect/reconnect works
-- [ ] Forfeit detection works (30s timeout)
 
----
+## Developer
 
-## 🤝 Contributing
+SimpliSoni - https://github.com/SimpliSoni
 
-This is an assignment project. Contributions are not being accepted at this time.
-
----
-
-## 📄 License
-
-MIT License - See [LICENSE](./LICENSE) file for details.
-
----
-
-## 👨‍💻 Developer
-
-**SimpliSoni** - [GitHub](https://github.com/SimpliSoni)
-
----
-
-## 🙏 Acknowledgments
-
-- **Lila Games** - For the assignment opportunity
-- **Railway** - For generous free tier
-- **MongoDB Atlas** - For free database hosting
-- **Expo** - For amazing mobile development experience
-
----
-
-**Built with ❤️ for Lila Games Backend Assignment**
+--- 
+Built with ❤️ for Lila Games Backend Assignment
